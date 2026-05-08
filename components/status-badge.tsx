@@ -1,25 +1,28 @@
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const PROPOSAL_STATUS_LABELS: Record<string, string> = {
   ENROLLED: "Terdaftar",
+  PROPOSAL_UPLOADED: "Proposal Diunggah",
+  ASSIGNED: "Pembimbing Ditugaskan",
   BIMBINGAN: "Bimbingan",
-  DE_SUBMITTED: "Dikumpul ke DE",
-  DE_SCORED: "DE Dinilai",
-  DE_REVISED: "Revisi DE",
-  SEMINAR_SCHEDULED: "Seminar Dijadwalkan",
+  DE_READY: "Siap DE",
+  DE_COMPLETED: "DE Selesai",
+  REVISION_UPLOADED: "Revisi Diunggah",
+  SEMINAR_REGISTERED: "Daftar Seminar",
   SEMINAR_COMPLETED: "Seminar Selesai",
   COMPLETED: "Selesai",
 };
 
 const PROPOSAL_STATUS_COLORS: Record<string, string> = {
   ENROLLED: "bg-gray-100 text-gray-700",
-  BIMBINGAN: "bg-blue-100 text-blue-700",
-  DE_SUBMITTED: "bg-yellow-100 text-yellow-700",
-  DE_SCORED: "bg-orange-100 text-orange-700",
-  DE_REVISED: "bg-purple-100 text-purple-700",
-  SEMINAR_SCHEDULED: "bg-indigo-100 text-indigo-700",
-  SEMINAR_COMPLETED: "bg-teal-100 text-teal-700",
+  PROPOSAL_UPLOADED: "bg-blue-100 text-blue-700",
+  ASSIGNED: "bg-indigo-100 text-indigo-700",
+  BIMBINGAN: "bg-yellow-100 text-yellow-700",
+  DE_READY: "bg-orange-100 text-orange-700",
+  DE_COMPLETED: "bg-purple-100 text-purple-700",
+  REVISION_UPLOADED: "bg-cyan-100 text-cyan-700",
+  SEMINAR_REGISTERED: "bg-pink-100 text-pink-700",
+  SEMINAR_COMPLETED: "bg-lime-100 text-lime-700",
   COMPLETED: "bg-green-100 text-green-700",
 };
 
@@ -39,11 +42,7 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-export function StatusBadge({
-  status,
-  type = "proposal",
-  className,
-}: StatusBadgeProps) {
+export function StatusBadge({ status, type = "proposal", className }: StatusBadgeProps) {
   let label = status;
   let colorClass = "bg-gray-100 text-gray-700";
 

@@ -22,7 +22,7 @@ type Proposal = {
     class: { code: string };
   };
   seminar: {
-    scheduledDate: Date;
+    scheduledDate: Date | null;
     location: string | null;
     status: string;
   } | null;
@@ -51,7 +51,7 @@ function SeminarForm({ proposal, onClose }: { proposal: Proposal; onClose: () =>
           id="scheduledDate"
           name="scheduledDate"
           type="datetime-local"
-          defaultValue={proposal.seminar ? new Date(proposal.seminar.scheduledDate).toISOString().slice(0, 16) : ""}
+          defaultValue={proposal.seminar?.scheduledDate ? new Date(proposal.seminar.scheduledDate).toISOString().slice(0, 16) : ""}
           required
         />
       </div>
@@ -93,7 +93,7 @@ export function SeminarScheduleList({ proposals }: { proposals: Proposal[] }) {
                 <p className="text-sm text-gray-600 line-clamp-1">{p.titleId}</p>
                 {p.seminar ? (
                   <p className="text-sm text-green-700">
-                    📅 {format(new Date(p.seminar.scheduledDate), "dd MMMM yyyy HH:mm", { locale: idLocale })}
+                    📅 {p.seminar.scheduledDate ? format(new Date(p.seminar.scheduledDate), "dd MMMM yyyy HH:mm", { locale: idLocale }) : "Tanggal belum ditetapkan"}
                     {p.seminar.location && ` – ${p.seminar.location}`}
                   </p>
                 ) : (

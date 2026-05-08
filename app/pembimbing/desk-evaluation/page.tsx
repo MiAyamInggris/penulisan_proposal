@@ -12,10 +12,10 @@ export default async function PembimbingDeskEvaluationPage() {
       deskEvaluatorId: session.user.id,
       status: {
         in: [
-          "DE_SUBMITTED",
-          "DE_SCORED",
-          "DE_REVISED",
-          "SEMINAR_SCHEDULED",
+          "DE_READY",
+          "DE_COMPLETED",
+          "REVISION_UPLOADED",
+          "SEMINAR_REGISTERED",
           "SEMINAR_COMPLETED",
           "COMPLETED",
         ],

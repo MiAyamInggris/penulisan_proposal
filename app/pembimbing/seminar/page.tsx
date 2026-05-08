@@ -10,7 +10,7 @@ export default async function SeminarPage() {
   const proposals = await prisma.proposal.findMany({
     where: {
       supervisor1AssignedId: session.user.id,
-      status: { in: ["DE_REVISED", "SEMINAR_SCHEDULED", "SEMINAR_COMPLETED"] },
+      status: { in: ["REVISION_UPLOADED", "SEMINAR_REGISTERED", "SEMINAR_COMPLETED"] },
     },
     include: {
       enrollment: {

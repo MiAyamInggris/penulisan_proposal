@@ -154,7 +154,7 @@ export function DEAssignList({
                 <Select
                   key={currentEval?.id ?? "none"}
                   value={selections[p.id] || currentEval?.id || "none"}
-                  onValueChange={(v) => setSelection(p.id, v)}
+                  onValueChange={(v) => v && setSelection(p.id, v)}
                 >
                   <SelectTrigger className="h-8 text-sm flex-1">
                     <SelectValue placeholder="Pilih Desk Evaluator" />

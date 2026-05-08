@@ -25,8 +25,7 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
 
   const roleLabels: Record<string, string> = {
     ADMIN: "Administrator",
-    DOSEN_KELAS: "Dosen Kelas",
-    PEMBIMBING: "Pembimbing",
+    DOSEN: "Dosen",
     MAHASISWA: "Mahasiswa",
   };
 

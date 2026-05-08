@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // Programs
+  // Programs (4 prodi with correct weights)
   const programs = await Promise.all([
     prisma.program.upsert({
       where: { code: "RPL" },
@@ -60,7 +60,7 @@ async function main() {
 
   console.log("✅ Programs seeded");
 
-  // Users
+  // Demo users
   const hashedAdmin = await bcrypt.hash("admin123", 10);
   const hashedDosen = await bcrypt.hash("dosen123", 10);
   const hashedPembimbing = await bcrypt.hash("pembimbing123", 10);
@@ -73,7 +73,7 @@ async function main() {
       name: "Administrator Sistem",
       email: "admin@telkomuniversity.ac.id",
       password: hashedAdmin,
-      roles: ["ADMIN"],
+      role: "ADMIN",
       identifier: "A000001",
     },
   });
@@ -85,7 +85,7 @@ async function main() {
       name: "Dr. Budi Santoso, M.T.",
       email: "dosen.kelas@telkomuniversity.ac.id",
       password: hashedDosen,
-      roles: ["DOSEN_KELAS"],
+      role: "DOSEN",
       identifier: "19800101200501001",
     },
   });
@@ -97,7 +97,7 @@ async function main() {
       name: "Dr. Sari Dewi, M.Kom.",
       email: "pembimbing@telkomuniversity.ac.id",
       password: hashedPembimbing,
-      roles: ["PEMBIMBING"],
+      role: "DOSEN",
       identifier: "19850601201001002",
     },
   });
@@ -109,14 +109,14 @@ async function main() {
       name: "Agus Prasetyo",
       email: "mahasiswa@telkomuniversity.ac.id",
       password: hashedMahasiswa,
-      roles: ["MAHASISWA"],
+      role: "MAHASISWA",
       identifier: "1301210001",
     },
   });
 
   console.log("✅ Users seeded");
 
-  // Class
+  // Demo class (RPL, Ganjil 2024/2025)
   const rplProgram = programs[0];
 
   const demoClass = await prisma.class.upsert({
@@ -124,8 +124,8 @@ async function main() {
     update: {},
     create: {
       id: "demo-class-001",
-      code: "CCH4A3-01",
-      name: "Penulisan Proposal TA – Kelas A",
+      code: "CCH4A3",
+      name: "Penulisan Proposal TA – RPL A",
       semester: "Ganjil",
       academicYear: "2024/2025",
       programId: rplProgram.id,
@@ -146,15 +146,15 @@ async function main() {
     },
   });
 
-  // Proposal for demo student
+  // Demo proposal
   const proposal = await prisma.proposal.upsert({
     where: { enrollmentId: enrollment.id },
     update: {},
     create: {
       enrollmentId: enrollment.id,
-      titleId: "Pengembangan Sistem Rekomendasi Topik Penelitian Menggunakan Metode Collaborative Filtering Berbasis Machine Learning",
-      titleEn: "Development of Research Topic Recommendation System Using Collaborative Filtering Method Based on Machine Learning",
-      topicArea: "Machine Learning & Recommender System",
+      titleId: "Sistem Deteksi Plagiarisme Menggunakan Deep Learning",
+      titleEn: "Plagiarism Detection System Using Deep Learning",
+      topicArea: "Machine Learning",
       status: "BIMBINGAN",
       supervisor1RequestedId: pembimbing.id,
       supervisor1AssignedId: pembimbing.id,
@@ -169,8 +169,8 @@ async function main() {
         proposalId: proposal.id,
         sessionNumber: 1,
         date: new Date("2024-10-05"),
-        topicsDiscussed: "Diskusi awal topik penelitian dan pemilihan metode collaborative filtering",
-        nextPlan: "Mencari literatur terkait collaborative filtering dan sistem rekomendasi",
+        topicsDiscussed: "Diskusi awal topik penelitian dan pemilihan metode deep learning",
+        nextPlan: "Mencari literatur terkait deep learning untuk deteksi plagiarisme",
         notes: "Mahasiswa diminta membawa minimal 10 paper referensi",
       },
       {
@@ -194,10 +194,12 @@ async function main() {
   console.log("✅ Demo proposal & bimbingan sessions seeded");
   console.log("\n🎉 Seeding complete!");
   console.log("\n📋 Demo Credentials:");
-  console.log("  Admin:      admin@telkomuniversity.ac.id / admin123");
-  console.log("  DosenKelas: dosen.kelas@telkomuniversity.ac.id / dosen123");
-  console.log("  Pembimbing: pembimbing@telkomuniversity.ac.id / pembimbing123");
-  console.log("  Mahasiswa:  mahasiswa@telkomuniversity.ac.id / mahasiswa123");
+  console.log("  Admin:       admin@telkomuniversity.ac.id      / admin123");
+  console.log("  Dosen Kelas: dosen.kelas@telkomuniversity.ac.id / dosen123");
+  console.log("  Pembimbing:  pembimbing@telkomuniversity.ac.id  / pembimbing123");
+  console.log("  Mahasiswa:   mahasiswa@telkomuniversity.ac.id   / mahasiswa123");
+
+  void admin;
 }
 
 main()

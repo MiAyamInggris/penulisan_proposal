@@ -8,12 +8,11 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const roles = session.user.roles ?? [];
+  const role = session.user.role;
 
-  if (roles.includes("ADMIN")) redirect("/admin/dashboard");
-  if (roles.includes("DOSEN_KELAS")) redirect("/dosen-kelas/dashboard");
-  if (roles.includes("PEMBIMBING")) redirect("/pembimbing/dashboard");
-  if (roles.includes("MAHASISWA")) redirect("/mahasiswa/dashboard");
+  if (role === "ADMIN") redirect("/admin/dashboard");
+  if (role === "DOSEN") redirect("/dosen/dashboard");
+  if (role === "MAHASISWA") redirect("/mahasiswa/dashboard");
 
   redirect("/login");
 }

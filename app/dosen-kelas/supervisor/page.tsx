@@ -33,7 +33,7 @@ export default async function SupervisorPage() {
   });
 
   const pembimbingList = await prisma.user.findMany({
-    where: { roles: { has: "PEMBIMBING" } },
+    where: { role: "DOSEN" },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });

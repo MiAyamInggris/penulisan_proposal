@@ -32,9 +32,8 @@ export default async function DeskEvaluatorPage() {
     orderBy: { createdAt: "asc" },
   });
 
-  // Any PEMBIMBING can be a desk evaluator
   const pembimbingList = await prisma.user.findMany({
-    where: { roles: { has: "PEMBIMBING" } },
+    where: { role: "DOSEN" },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });

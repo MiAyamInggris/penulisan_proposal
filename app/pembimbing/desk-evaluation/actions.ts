@@ -19,7 +19,7 @@ export async function scoreDeskEvaluation(proposalId: string, formData: FormData
   });
 
   if (!proposal) return { error: "Proposal tidak ditemukan" };
-  
+
   if (proposal.deskEvaluatorId !== session.user.id) {
     return { error: "Anda bukan desk evaluator untuk proposal ini" };
   }
@@ -38,12 +38,12 @@ export async function scoreDeskEvaluation(proposalId: string, formData: FormData
   await prisma.$transaction([
     prisma.deskEvaluation.upsert({
       where: { proposalId },
-      update: { latarBelakang, formulasiMasalah, teoriPendukung, ideMetode, catatanReviewer, isLate, reviewerId: session.user.id },
-      create: { proposalId, latarBelakang, formulasiMasalah, teoriPendukung, ideMetode, catatanReviewer, isLate, reviewerId: session.user.id },
+      update: { latarBelakang, formulasiMasalah, teoriPendukung, ideMetode, catatanReviewer, isLate, evaluatorId: session.user.id },
+      create: { proposalId, latarBelakang, formulasiMasalah, teoriPendukung, ideMetode, catatanReviewer, isLate, evaluatorId: session.user.id },
     }),
     prisma.proposal.update({
       where: { id: proposalId },
-      data: { status: "DE_SCORED" },
+      data: { status: "DE_COMPLETED" },
     }),
   ]);
 

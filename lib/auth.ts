@@ -17,7 +17,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: credentials.email as string },
         });
 
-        if (!user) return null;
+        if (!user || !user.isActive) return null;
 
         const isValid = await bcrypt.compare(
           credentials.password as string,
@@ -30,7 +30,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user.id,
           name: user.name,
           email: user.email,
-          roles: user.roles,
+          role: user.role,
           identifier: user.identifier,
         };
       },
@@ -39,14 +39,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        token.roles = (user as { roles: string[] }).roles;
+        token.role = (user as { role: string }).role;
         token.identifier = (user as { identifier: string }).identifier;
       }
       return token;
     },
     session({ session, token }) {
       if (token) {
-        session.user.roles = token.roles as string[];
+        session.user.role = token.role as string;
         session.user.identifier = token.identifier as string;
         session.user.id = token.sub!;
       }

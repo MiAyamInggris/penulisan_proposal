@@ -3,48 +3,42 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import {
   LayoutDashboard,
-  FileText,
-  MessageSquare,
-  Upload,
-  Star,
+  BookOpen,
+  Users,
+  ClipboardCheck,
 } from "lucide-react";
 
 const navItems = [
   {
-    href: "/mahasiswa/dashboard",
+    href: "/dosen/dashboard",
     label: "Dashboard",
     icon: <LayoutDashboard className="h-4 w-4" />,
   },
   {
-    href: "/mahasiswa/proposal",
-    label: "Proposal Saya",
-    icon: <FileText className="h-4 w-4" />,
+    href: "/dosen-kelas/kelas",
+    label: "Kelas Saya",
+    icon: <BookOpen className="h-4 w-4" />,
   },
   {
-    href: "/mahasiswa/bimbingan",
-    label: "Log Bimbingan",
-    icon: <MessageSquare className="h-4 w-4" />,
+    href: "/dosen-kelas/supervisor",
+    label: "Mahasiswa Saya",
+    icon: <Users className="h-4 w-4" />,
   },
   {
-    href: "/mahasiswa/eprt",
-    label: "EpRT",
-    icon: <Upload className="h-4 w-4" />,
-  },
-  {
-    href: "/mahasiswa/nilai",
-    label: "Nilai Saya",
-    icon: <Star className="h-4 w-4" />,
+    href: "/dosen-kelas/desk-evaluator",
+    label: "Evaluasi",
+    icon: <ClipboardCheck className="h-4 w-4" />,
   },
 ];
 
-export default async function MahasiswaLayout({
+export default async function DosenLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const session = await auth();
 
-  if (session?.user?.role !== "MAHASISWA") redirect("/login");
+  if (session?.user?.role !== "DOSEN") redirect("/login");
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -52,7 +46,7 @@ export default async function MahasiswaLayout({
         navItems={navItems}
         userEmail={session.user.email}
         userName={session.user.name}
-        role="MAHASISWA"
+        role="DOSEN"
       />
       <main className="flex-1 overflow-y-auto bg-gray-50">
         <div className="p-6">{children}</div>

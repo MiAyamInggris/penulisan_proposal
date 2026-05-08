@@ -14,7 +14,7 @@ type Proposal = {
   titleEn: string | null;
   topicArea: string | null;
   status: string;
-  pdfUrl: string | null;
+  proposalUrl: string | null;
   supervisor1Requested: { name: string } | null;
   supervisor2Requested: { name: string } | null;
   supervisor1Assigned: { name: string } | null;

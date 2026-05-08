@@ -38,7 +38,7 @@ type Proposal = {
   };
   seminar: {
     id: string;
-    scheduledDate: Date;
+    scheduledDate: Date | null;
     location: string | null;
     nilaiPresentasi: NilaiPresentasi[];
   } | null;
@@ -126,7 +126,7 @@ export function PresentasiScoreList({ proposals }: { proposals: Proposal[] }) {
                   </div>
                   {p.seminar && (
                     <p className="text-xs text-gray-500">
-                      Seminar: {format(new Date(p.seminar.scheduledDate), "dd MMM yyyy HH:mm", { locale: idLocale })}
+                      Seminar: {p.seminar.scheduledDate ? format(new Date(p.seminar.scheduledDate), "dd MMM yyyy HH:mm", { locale: idLocale }) : "Belum dijadwalkan"}
                       {p.seminar.location && ` – ${p.seminar.location}`}
                     </p>
                   )}

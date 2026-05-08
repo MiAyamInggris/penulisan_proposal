@@ -13,7 +13,7 @@ export default async function ClassesPage() {
     }),
     prisma.program.findMany({ orderBy: { code: "asc" } }),
     prisma.user.findMany({
-      where: { roles: { has: "DOSEN_KELAS" } },
+      where: { role: "DOSEN" },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),

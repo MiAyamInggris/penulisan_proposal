@@ -26,7 +26,7 @@ export async function registerProposal(formData: FormData) {
       topicArea: (formData.get("topicArea") as string) || null,
       supervisor1RequestedId: (formData.get("supervisor1RequestedId") as string) || null,
       supervisor2RequestedId: (formData.get("supervisor2RequestedId") as string) || null,
-      status: "BIMBINGAN",
+      status: "PROPOSAL_UPLOADED",
     },
   });
 
@@ -55,7 +55,7 @@ export async function submitForDE() {
 
   await prisma.proposal.update({
     where: { id: enrollment.proposal.id },
-    data: { status: "DE_SUBMITTED" },
+    data: { status: "DE_READY" },
   });
 
   revalidatePath("/mahasiswa/proposal");
@@ -63,11 +63,17 @@ export async function submitForDE() {
   return { success: true };
 }
 
-export async function uploadProposalPdf(proposalId: string, pdfUrl: string) {
+export async function uploadRevision(proposalId: string, revisionUrl: string, presentationUrl: string) {
   await prisma.proposal.update({
     where: { id: proposalId },
-    data: { pdfUrl, pdfUploadedAt: new Date(), status: "COMPLETED" },
+    data: {
+      revisionUrl,
+      presentationUrl,
+      revisionUploadedAt: new Date(),
+      status: "REVISION_UPLOADED",
+    },
   });
   revalidatePath("/mahasiswa/proposal");
+  revalidatePath("/mahasiswa/dashboard");
   return { success: true };
 }

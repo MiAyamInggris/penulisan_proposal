@@ -56,7 +56,7 @@ export default async function DosenKelasLayout({
 }) {
   const session = await auth();
 
-  if (!session?.user?.roles?.includes("DOSEN_KELAS")) redirect("/login");
+  if (session?.user?.role !== "DOSEN") redirect("/login");
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -64,7 +64,7 @@ export default async function DosenKelasLayout({
         navItems={navItems}
         userEmail={session.user.email}
         userName={session.user.name}
-        role="DOSEN_KELAS"
+        role="DOSEN"
       />
       <main className="flex-1 overflow-y-auto bg-gray-50">
         <div className="p-6">{children}</div>

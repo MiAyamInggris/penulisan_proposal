@@ -17,7 +17,7 @@ export default async function DeskEvaluationPage() {
   const proposals = await prisma.proposal.findMany({
     where: {
       enrollment: { classId: { in: myClassIds } },
-      status: { in: ["DE_SUBMITTED", "DE_SCORED", "DE_REVISED", "SEMINAR_SCHEDULED", "SEMINAR_COMPLETED", "COMPLETED"] },
+      status: { in: ["DE_READY", "DE_COMPLETED", "REVISION_UPLOADED", "SEMINAR_REGISTERED", "SEMINAR_COMPLETED", "COMPLETED"] },
     },
     include: {
       enrollment: {
