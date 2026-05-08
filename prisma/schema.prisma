@@ -3,14 +3,16 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
 
 enum Role {
   ADMIN
-  DOSEN_KELAS
-  PEMBIMBING
+  DOSEN
   MAHASISWA
 }
 
@@ -23,11 +25,13 @@ enum ProdiCode {
 
 enum ProposalStatus {
   ENROLLED
+  PROPOSAL_UPLOADED
+  ASSIGNED
   BIMBINGAN
-  DE_SUBMITTED
-  DE_SCORED
-  DE_REVISED
-  SEMINAR_SCHEDULED
+  DE_READY
+  DE_COMPLETED
+  REVISION_UPLOADED
+  SEMINAR_REGISTERED
   SEMINAR_COMPLETED
   COMPLETED
 }
@@ -38,32 +42,45 @@ enum EprtStatus {
 }
 
 enum SeminarStatus {
+  REGISTERED
   SCHEDULED
   COMPLETED
   CANCELLED
 }
+
+enum NotificationType {
+  SEMINAR_REGISTRATION
+  EPRT_VERIFIED
+  DE_SCORED
+  ASSIGNMENT_MADE
+}
+
+// ─── Core Models ─────────────────────────────────────────────────────────────
 
 model User {
   id         String   @id @default(cuid())
   name       String
   email      String   @unique
   password   String
-  roles      Role[]
+  role       Role
   identifier String
+  isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  classesAsDosenKelas Class[]                 @relation("DosenKelas")
-  enrollments         ClassEnrollment[]
-  supervisedAsFirst   Proposal[]              @relation("Supervisor1Assigned")
-  supervisedAsSecond  Proposal[]              @relation("Supervisor2Assigned")
-  requestedAsFirst    Proposal[]              @relation("Supervisor1Requested")
-  requestedAsSecond   Proposal[]              @relation("Supervisor2Requested")
-  bimbinganScores     NilaiBimbingan[]
-  deskEvaluations     DeskEvaluation[]
-  literatureReviews   NilaiLiteratureReview[]
-  presentasiScores    NilaiPresentasi[]
-  eprtRecords         EprtRecord[]            @relation("EprtVerifier")
+  classesAsDosenKelas    Class[]           @relation("DosenKelas")
+  enrollments            ClassEnrollment[]
+  supervisedAsFirst      Proposal[]        @relation("Supervisor1Assigned")
+  supervisedAsSecond     Proposal[]        @relation("Supervisor2Assigned")
+  requestedAsFirst       Proposal[]        @relation("Supervisor1Requested")
+  requestedAsSecond      Proposal[]        @relation("Supervisor2Requested")
+  assignedDeskEvals      Proposal[]        @relation("DeskEvaluator")
+  nilaiBimbingan         NilaiBimbingan[]
+  deskEvaluationScores   DeskEvaluation[]
+  nilaiLiteratureReview  NilaiLiteratureReview[]
+  nilaiPresentasi        NilaiPresentasi[]
+  eprtVerifications      EprtRecord[]      @relation("EprtVerifier")
+  notificationsReceived  Notification[]    @relation("NotificationRecipient")
 }
 
 model Program {
@@ -88,6 +105,7 @@ model Class {
   dosenKelasId String
   deDeadline   DateTime?
   createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   program     Program           @relation(fields: [programId], references: [id])
   dosenKelas  User              @relation("DosenKelas", fields: [dosenKelasId], references: [id])
@@ -109,35 +127,47 @@ model ClassEnrollment {
   @@unique([classId, studentId])
 }
 
+// ─── Proposal ────────────────────────────────────────────────────────────────
+
 model Proposal {
-  id                     String         @id @default(cuid())
-  enrollmentId           String         @unique
-  titleId                String
-  titleEn                String?
-  topicArea              String?
-  status                 ProposalStatus @default(ENROLLED)
-  pdfUrl                 String?
-  pdfUploadedAt          DateTime?
+  id           String         @id @default(cuid())
+  enrollmentId String         @unique
+  titleId      String
+  titleEn      String?
+  topicArea    String?
+  status       ProposalStatus @default(ENROLLED)
+
+  proposalUrl        String?
+  proposalUploadedAt DateTime?
+  revisionUrl        String?
+  presentationUrl    String?
+  revisionUploadedAt DateTime?
+
   supervisor1RequestedId String?
   supervisor2RequestedId String?
   supervisor1AssignedId  String?
   supervisor2AssignedId  String?
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
+  deskEvaluatorId        String?
 
-  enrollment           ClassEnrollment       @relation(fields: [enrollmentId], references: [id])
-  supervisor1Requested User?                 @relation("Supervisor1Requested", fields: [supervisor1RequestedId], references: [id])
-  supervisor2Requested User?                 @relation("Supervisor2Requested", fields: [supervisor2RequestedId], references: [id])
-  supervisor1Assigned  User?                 @relation("Supervisor1Assigned", fields: [supervisor1AssignedId], references: [id])
-  supervisor2Assigned  User?                 @relation("Supervisor2Assigned", fields: [supervisor2AssignedId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollment           ClassEnrollment        @relation(fields: [enrollmentId], references: [id])
+  supervisor1Requested User?                  @relation("Supervisor1Requested", fields: [supervisor1RequestedId], references: [id])
+  supervisor2Requested User?                  @relation("Supervisor2Requested", fields: [supervisor2RequestedId], references: [id])
+  supervisor1Assigned  User?                  @relation("Supervisor1Assigned", fields: [supervisor1AssignedId], references: [id])
+  supervisor2Assigned  User?                  @relation("Supervisor2Assigned", fields: [supervisor2AssignedId], references: [id])
+  deskEvaluator        User?                  @relation("DeskEvaluator", fields: [deskEvaluatorId], references: [id])
 
   bimbinganSessions     BimbinganSession[]
   nilaiBimbingan        NilaiBimbingan[]
   deskEvaluation        DeskEvaluation?
-  seminar               Seminar?
   nilaiLiteratureReview NilaiLiteratureReview[]
+  seminar               Seminar?
   finalGrade            FinalGrade?
 }
+
+// ─── Bimbingan ───────────────────────────────────────────────────────────────
 
 model BimbinganSession {
   id              String   @id @default(cuid())
@@ -166,6 +196,8 @@ model EprtRecord {
   verifiedBy User?           @relation("EprtVerifier", fields: [verifiedById], references: [id])
 }
 
+// ─── Scoring Forms ────────────────────────────────────────────────────────────
+
 model NilaiBimbingan {
   id                  String   @id @default(cuid())
   proposalId          String
@@ -190,8 +222,7 @@ model NilaiBimbingan {
 model DeskEvaluation {
   id               String   @id @default(cuid())
   proposalId       String   @unique
-  reviewerId       String
-  submittedAt      DateTime @default(now())
+  evaluatorId      String
   isLate           Boolean  @default(false)
   latarBelakang    Float
   formulasiMasalah Float
@@ -201,17 +232,41 @@ model DeskEvaluation {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  proposal Proposal @relation(fields: [proposalId], references: [id])
-  reviewer User     @relation(fields: [reviewerId], references: [id])
+  proposal  Proposal @relation(fields: [proposalId], references: [id])
+  evaluator User     @relation(fields: [evaluatorId], references: [id])
 }
+
+model NilaiLiteratureReview {
+  id                  String   @id @default(cuid())
+  proposalId          String
+  pembimbingId        String
+  kualitasPustaka     Float
+  kontenRumusan       Float
+  analisisTujuan      Float
+  kelengkapanKajian   Float
+  kelebihanKekurangan Float
+  relasiTeori         Float
+  catatan             String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+  pembimbing User     @relation(fields: [pembimbingId], references: [id])
+
+  @@unique([proposalId, pembimbingId])
+}
+
+// ─── Seminar ─────────────────────────────────────────────────────────────────
 
 model Seminar {
   id            String        @id @default(cuid())
   proposalId    String        @unique
-  scheduledDate DateTime
+  registeredAt  DateTime      @default(now())
+  scheduledDate DateTime?
   location      String?
-  status        SeminarStatus @default(SCHEDULED)
+  status        SeminarStatus @default(REGISTERED)
   createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   proposal        Proposal          @relation(fields: [proposalId], references: [id])
   nilaiPresentasi NilaiPresentasi[]
@@ -227,6 +282,7 @@ model NilaiPresentasi {
   pemaparanScore      Float
   komunikasiScore     Float
   createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   seminar    Seminar @relation(fields: [seminarId], references: [id])
   pembimbing User    @relation(fields: [pembimbingId], references: [id])
@@ -234,28 +290,26 @@ model NilaiPresentasi {
   @@unique([seminarId, pembimbingId])
 }
 
-model NilaiLiteratureReview {
-  id                  String   @id @default(cuid())
-  proposalId          String
-  pembimbingId        String
-  kualitasPustaka     Float
-  kontenRumusan       Float
-  analisisTujuan      Float
-  kelengkapanKajian   Float
-  kelebihanKekurangan Float
-  relasiTeori         Float
-  catatan             String?
-  createdAt           DateTime @default(now())
+// ─── Notifications ────────────────────────────────────────────────────────────
 
-  proposal   Proposal @relation(fields: [proposalId], references: [id])
-  pembimbing User     @relation(fields: [pembimbingId], references: [id])
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  recipientId String
+  title       String
+  message     String
+  isRead      Boolean          @default(false)
+  proposalId  String?
+  createdAt   DateTime         @default(now())
 
-  @@unique([proposalId, pembimbingId])
+  recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id])
 }
 
+// ─── Final Grade ──────────────────────────────────────────────────────────────
+
 model FinalGrade {
-  id              String    @id @default(cuid())
-  proposalId      String    @unique
+  id              String   @id @default(cuid())
+  proposalId      String   @unique
   lrScore         Float?
   bimbinganScore  Float?
   deScore         Float?
@@ -264,7 +318,7 @@ model FinalGrade {
   gradeIndex      String?
   passed          Boolean?
   computedAt      DateTime?
-  updatedAt       DateTime  @updatedAt
+  updatedAt       DateTime @updatedAt
 
   proposal Proposal @relation(fields: [proposalId], references: [id])
 }

@@ -10,7 +10,7 @@ const userSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6).optional(),
-  roles: z.array(z.nativeEnum(Role)),
+  role: z.nativeEnum(Role),
   identifier: z.string().min(1),
 });
 
@@ -19,7 +19,7 @@ export async function createUser(formData: FormData) {
     name: formData.get("name") as string,
     email: formData.get("email") as string,
     password: formData.get("password") as string,
-    roles: (formData.getAll("roles") as Role[]),
+    role: formData.get("role") as Role,
     identifier: formData.get("identifier") as string,
   };
 
@@ -33,7 +33,7 @@ export async function createUser(formData: FormData) {
       name: data.name,
       email: data.email,
       password: hashed,
-      roles: data.roles,
+      role: data.role,
       identifier: data.identifier,
     },
   });
@@ -46,14 +46,14 @@ export async function updateUser(id: string, formData: FormData) {
   const data = {
     name: formData.get("name") as string,
     email: formData.get("email") as string,
-    roles: (formData.getAll("roles") as Role[]),
+    role: formData.get("role") as Role,
     identifier: formData.get("identifier") as string,
   };
 
   const updateData: Record<string, unknown> = {
     name: data.name,
     email: data.email,
-    roles: data.roles,
+    role: data.role,
     identifier: data.identifier,
   };
 
@@ -67,9 +67,8 @@ export async function updateUser(id: string, formData: FormData) {
   return { success: true };
 }
 
-export async function deactivateUser(id: string) {
-  // Soft delete: we don't hard-delete as user may have related records
-  // We just update the user in reality; for simplicity return success
+export async function toggleUserActive(id: string, isActive: boolean) {
+  await prisma.user.update({ where: { id }, data: { isActive } });
   revalidatePath("/admin/users");
   return { success: true };
 }

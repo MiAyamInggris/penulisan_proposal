@@ -1,9 +1,9 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { SupervisorAssignList } from "./supervisor-assign-list";
+import { DEAssignList } from "./de-assign-list";
 
-export default async function SupervisorPage() {
+export default async function DeskEvaluatorPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
@@ -25,11 +25,11 @@ export default async function SupervisorPage() {
           class: { select: { code: true } },
         },
       },
-      supervisor1Requested: { select: { id: true, name: true } },
-      supervisor2Requested: { select: { id: true, name: true } },
       supervisor1Assigned: { select: { id: true, name: true } },
       supervisor2Assigned: { select: { id: true, name: true } },
+      deskEvaluator: { select: { id: true, name: true } },
     },
+    orderBy: { createdAt: "asc" },
   });
 
   const pembimbingList = await prisma.user.findMany({
@@ -41,12 +41,14 @@ export default async function SupervisorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Penugasan Pembimbing</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Penugasan Desk Evaluator
+        </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Tugaskan pembimbing berdasarkan hasil Rapat Pleno
+          Tugaskan dosen penilai DE yang berbeda dari pembimbing proposal
         </p>
       </div>
-      <SupervisorAssignList proposals={proposals} pembimbingList={pembimbingList} />
+      <DEAssignList proposals={proposals} pembimbingList={pembimbingList} />
     </div>
   );
 }

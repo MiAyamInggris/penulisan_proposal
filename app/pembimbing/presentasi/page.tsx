@@ -13,7 +13,7 @@ export default async function PresentasiPage() {
         { supervisor1AssignedId: session.user.id },
         { supervisor2AssignedId: session.user.id },
       ],
-      status: { in: ["SEMINAR_SCHEDULED", "SEMINAR_COMPLETED", "COMPLETED"] },
+      status: { in: ["SEMINAR_REGISTERED", "SEMINAR_COMPLETED", "COMPLETED"] },
     },
     include: {
       enrollment: {

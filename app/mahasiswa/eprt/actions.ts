@@ -2,8 +2,17 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
+
+async function uploadToBlob(path: string, file: File): Promise<string> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    // Local dev fallback: store filename as placeholder URL
+    return `/local-uploads/${path}`;
+  }
+  const { put } = await import("@vercel/blob");
+  const blob = await put(path, file, { access: "public" });
+  return blob.url;
+}
 
 export async function uploadEprt(formData: FormData) {
   const session = await auth();
@@ -22,15 +31,16 @@ export async function uploadEprt(formData: FormData) {
   const file = formData.get("screenshot") as File;
   if (!file || file.size === 0) return { error: "File screenshot wajib diupload" };
 
-  const blob = await put(`eprt/${enrollment.id}-${Date.now()}-${file.name}`, file, {
-    access: "public",
-  });
+  const screenshotUrl = await uploadToBlob(
+    `eprt/${enrollment.id}-${Date.now()}-${file.name}`,
+    file
+  );
 
   await prisma.eprtRecord.create({
     data: {
       enrollmentId: enrollment.id,
       eprtDate: new Date(formData.get("eprtDate") as string),
-      screenshotUrl: blob.url,
+      screenshotUrl,
     },
   });
 

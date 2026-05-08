@@ -28,7 +28,7 @@ export async function scheduleSeminar(proposalId: string, formData: FormData) {
     }),
     prisma.proposal.update({
       where: { id: proposalId },
-      data: { status: "SEMINAR_SCHEDULED" },
+      data: { status: "SEMINAR_REGISTERED" },
     }),
   ]);
 

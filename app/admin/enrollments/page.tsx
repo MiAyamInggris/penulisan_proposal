@@ -14,7 +14,7 @@ export default async function EnrollmentsPage() {
       },
     }),
     prisma.user.findMany({
-      where: { roles: { has: "MAHASISWA" } },
+      where: { role: "MAHASISWA" },
       orderBy: { name: "asc" },
       select: { id: true, name: true, identifier: true },
     }),

@@ -12,18 +12,20 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  const roles: string[] = req.auth.user?.roles ?? [];
+  const role: string = req.auth.user?.role ?? "";
 
-  if (pathname.startsWith("/admin") && !roles.includes("ADMIN")) {
+  if (pathname.startsWith("/admin") && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/dosen-kelas") && !roles.includes("DOSEN_KELAS")) {
+  if (
+    (pathname.startsWith("/dosen") ||
+      pathname.startsWith("/dosen-kelas") ||
+      pathname.startsWith("/pembimbing")) &&
+    role !== "DOSEN"
+  ) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (pathname.startsWith("/pembimbing") && !roles.includes("PEMBIMBING")) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-  if (pathname.startsWith("/mahasiswa") && !roles.includes("MAHASISWA")) {
+  if (pathname.startsWith("/mahasiswa") && role !== "MAHASISWA") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 

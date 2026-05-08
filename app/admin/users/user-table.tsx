@@ -7,42 +7,50 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { createUser, updateUser } from "./actions";
-import { Plus, Pencil } from "lucide-react";
+import { createUser, updateUser, toggleUserActive } from "./actions";
+import { Plus, Pencil, PowerOff, Power } from "lucide-react";
 import { Role } from "@prisma/client";
 
 type UserRow = {
   id: string;
   name: string;
   email: string;
-  roles: Role[];
+  role: Role;
   identifier: string;
+  isActive: boolean;
   createdAt: Date;
 };
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "ADMIN", label: "Admin" },
-  { value: "DOSEN_KELAS", label: "Dosen Kelas" },
-  { value: "PEMBIMBING", label: "Pembimbing" },
+  { value: "DOSEN", label: "Dosen" },
   { value: "MAHASISWA", label: "Mahasiswa" },
 ];
 
-function UserFormDialog({
-  user,
-  onClose,
-}: {
-  user?: UserRow;
-  onClose: () => void;
-}) {
+const ROLE_COLORS: Record<Role, string> = {
+  ADMIN: "bg-red-100 text-red-700",
+  DOSEN: "bg-blue-100 text-blue-700",
+  MAHASISWA: "bg-green-100 text-green-700",
+};
+
+function UserFormDialog({ user, onClose }: { user?: UserRow; onClose: () => void }) {
   const [loading, setLoading] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<Role[]>(user?.roles ?? []);
+  const [selectedRole, setSelectedRole] = useState<Role>(user?.role ?? "MAHASISWA");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     const formData = new FormData(e.currentTarget);
-    selectedRoles.forEach((r) => formData.append("roles", r));
+    formData.set("role", selectedRole);
     try {
       if (user) {
         await updateUser(user.id, formData);
@@ -57,12 +65,6 @@ function UserFormDialog({
     } finally {
       setLoading(false);
     }
-  };
-
-  const toggleRole = (role: Role) => {
-    setSelectedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
-    );
   };
 
   return (
@@ -85,26 +87,26 @@ function UserFormDialog({
         <Label htmlFor="password">Password {user && "(kosongkan jika tidak diubah)"}</Label>
         <Input id="password" name="password" type="password" required={!user} />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1">
         <Label>Role</Label>
-        <div className="flex flex-wrap gap-2">
-          {ROLE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => toggleRole(opt.value)}
-              className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                selectedRoles.includes(opt.value)
-                  ? "bg-[#C8102E] text-white border-[#C8102E]"
-                  : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as Role)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ROLE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-      <Button type="submit" disabled={loading || selectedRoles.length === 0} className="w-full bg-[#C8102E] hover:bg-[#a50d26]">
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full bg-[#C8102E] hover:bg-[#a50d26]"
+      >
         {loading ? "Menyimpan..." : user ? "Perbarui Pengguna" : "Buat Pengguna"}
       </Button>
     </form>
@@ -114,49 +116,98 @@ function UserFormDialog({
 export function UserTable({ users }: { users: UserRow[] }) {
   const [open, setOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserRow | undefined>();
-
-  const roleLabels: Record<string, string> = {
-    ADMIN: "Admin",
-    DOSEN_KELAS: "Dosen Kelas",
-    PEMBIMBING: "Pembimbing",
-    MAHASISWA: "Mahasiswa",
-  };
+  const [activeTab, setActiveTab] = useState<string>("ALL");
 
   const openCreate = () => { setEditUser(undefined); setOpen(true); };
   const openEdit = (user: UserRow) => { setEditUser(user); setOpen(true); };
   const closeDialog = () => { setOpen(false); setEditUser(undefined); };
+
+  const handleToggleActive = async (user: UserRow) => {
+    try {
+      await toggleUserActive(user.id, !user.isActive);
+      toast.success(user.isActive ? "Pengguna dinonaktifkan" : "Pengguna diaktifkan");
+    } catch {
+      toast.error("Terjadi kesalahan");
+    }
+  };
 
   const columns: ColumnDef<UserRow>[] = [
     { accessorKey: "name", header: "Nama" },
     { accessorKey: "email", header: "Email" },
     { accessorKey: "identifier", header: "NIM/NIP" },
     {
-      accessorKey: "roles",
+      accessorKey: "role",
       header: "Role",
       cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          {row.original.roles.map((r) => (
-            <span key={r} className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
-              {roleLabels[r] ?? r}
-            </span>
-          ))}
-        </div>
+        <span
+          className={`px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[row.original.role]}`}
+        >
+          {ROLE_OPTIONS.find((r) => r.value === row.original.role)?.label ?? row.original.role}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "isActive",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge variant={row.original.isActive ? "default" : "secondary"}>
+          {row.original.isActive ? "Aktif" : "Nonaktif"}
+        </Badge>
       ),
     },
     {
       id: "actions",
       header: "Aksi",
       cell: ({ row }) => (
-        <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleToggleActive(row.original)}
+            title={row.original.isActive ? "Nonaktifkan" : "Aktifkan"}
+          >
+            {row.original.isActive ? (
+              <PowerOff className="h-4 w-4 text-red-500" />
+            ) : (
+              <Power className="h-4 w-4 text-green-500" />
+            )}
+          </Button>
+        </div>
       ),
     },
   ];
 
+  const filteredUsers =
+    activeTab === "ALL" ? users : users.filter((u) => u.role === activeTab);
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          {[{ value: "ALL", label: "Semua" }, ...ROLE_OPTIONS].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setActiveTab(opt.value)}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === opt.value
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {opt.label}
+              <span className="ml-2 text-xs opacity-70">
+                (
+                {opt.value === "ALL"
+                  ? users.length
+                  : users.filter((u) => u.role === opt.value).length}
+                )
+              </span>
+            </button>
+          ))}
+        </div>
         <Button className="bg-[#C8102E] hover:bg-[#a50d26]" onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" />
           Tambah Pengguna
@@ -164,13 +215,19 @@ export function UserTable({ users }: { users: UserRow[] }) {
         <Dialog open={open} onOpenChange={(v) => { if (!v) closeDialog(); }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editUser ? "Edit Pengguna" : "Tambah Pengguna Baru"}</DialogTitle>
+              <DialogTitle>
+                {editUser ? "Edit Pengguna" : "Tambah Pengguna Baru"}
+              </DialogTitle>
             </DialogHeader>
             <UserFormDialog user={editUser} onClose={closeDialog} />
           </DialogContent>
         </Dialog>
       </div>
-      <DataTable columns={columns} data={users} searchPlaceholder="Cari pengguna..." />
+      <DataTable
+        columns={columns}
+        data={filteredUsers}
+        searchPlaceholder="Cari pengguna..."
+      />
     </div>
   );
 }

@@ -43,11 +43,13 @@ export default async function AdminDashboard() {
 
   const statusLabels: Record<string, string> = {
     ENROLLED: "Terdaftar",
+    PROPOSAL_UPLOADED: "Proposal Diunggah",
+    ASSIGNED: "Pembimbing Ditugaskan",
     BIMBINGAN: "Bimbingan",
-    DE_SUBMITTED: "Dikumpul ke DE",
-    DE_SCORED: "DE Dinilai",
-    DE_REVISED: "Revisi DE",
-    SEMINAR_SCHEDULED: "Seminar Dijadwalkan",
+    DE_READY: "Siap DE",
+    DE_COMPLETED: "DE Selesai",
+    REVISION_UPLOADED: "Revisi Diunggah",
+    SEMINAR_REGISTERED: "Daftar Seminar",
     SEMINAR_COMPLETED: "Seminar Selesai",
     COMPLETED: "Selesai",
   };

@@ -7,34 +7,40 @@ import { CheckCircle2, Circle, AlertCircle } from "lucide-react";
 
 const STAGES = [
   "ENROLLED",
+  "PROPOSAL_UPLOADED",
+  "ASSIGNED",
   "BIMBINGAN",
-  "DE_SUBMITTED",
-  "DE_SCORED",
-  "DE_REVISED",
-  "SEMINAR_SCHEDULED",
+  "DE_READY",
+  "DE_COMPLETED",
+  "REVISION_UPLOADED",
+  "SEMINAR_REGISTERED",
   "SEMINAR_COMPLETED",
   "COMPLETED",
 ] as const;
 
 const STAGE_LABELS: Record<string, string> = {
   ENROLLED: "Terdaftar",
+  PROPOSAL_UPLOADED: "Proposal Diunggah",
+  ASSIGNED: "Pembimbing Ditugaskan",
   BIMBINGAN: "Bimbingan",
-  DE_SUBMITTED: "Dikumpul ke DE",
-  DE_SCORED: "DE Dinilai",
-  DE_REVISED: "Revisi DE",
-  SEMINAR_SCHEDULED: "Seminar Dijadwalkan",
+  DE_READY: "Siap Desk Evaluasi",
+  DE_COMPLETED: "DE Selesai",
+  REVISION_UPLOADED: "Revisi Diunggah",
+  SEMINAR_REGISTERED: "Daftar Seminar",
   SEMINAR_COMPLETED: "Seminar Selesai",
   COMPLETED: "Selesai",
 };
 
 const NEXT_ACTION: Record<string, string> = {
   ENROLLED: "Daftarkan proposal Anda dan mulai sesi bimbingan",
+  PROPOSAL_UPLOADED: "Menunggu penugasan pembimbing dari Dosen Kelas",
+  ASSIGNED: "Mulai sesi bimbingan dengan pembimbing yang ditugaskan",
   BIMBINGAN: "Lakukan minimal 3 sesi bimbingan dan upload EpRT",
-  DE_SUBMITTED: "Menunggu penilaian Desk Evaluation dari Dosen Kelas",
-  DE_SCORED: "Lakukan revisi sesuai catatan reviewer",
-  DE_REVISED: "Menunggu jadwal seminar proposal",
-  SEMINAR_SCHEDULED: "Persiapkan presentasi seminar proposal Anda",
-  SEMINAR_COMPLETED: "Unggah dokumen proposal final",
+  DE_READY: "Menunggu penilaian Desk Evaluation",
+  DE_COMPLETED: "Unggah revisi proposal dan file presentasi",
+  REVISION_UPLOADED: "Daftarkan diri untuk seminar proposal",
+  SEMINAR_REGISTERED: "Persiapkan presentasi seminar proposal Anda",
+  SEMINAR_COMPLETED: "Menunggu nilai akhir",
   COMPLETED: "Selamat! Semua tahapan selesai",
 };
 
@@ -89,7 +95,6 @@ export default async function MahasiswaDashboard() {
         </p>
       </div>
 
-      {/* Status card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -103,8 +108,7 @@ export default async function MahasiswaDashboard() {
           <CardContent className="pt-6">
             <p className="text-sm text-gray-500">Sesi Bimbingan</p>
             <p className={`text-2xl font-bold mt-1 ${bimbinganCount >= 3 ? "text-green-600" : "text-gray-900"}`}>
-              {bimbinganCount} / 3
-              {bimbinganCount >= 3 && " ✓"}
+              {bimbinganCount} / 3{bimbinganCount >= 3 && " ✓"}
             </p>
           </CardContent>
         </Card>
@@ -122,7 +126,6 @@ export default async function MahasiswaDashboard() {
         </Card>
       </div>
 
-      {/* Next action */}
       <Card className="border-l-4 border-l-[#C8102E]">
         <CardContent className="pt-6">
           <p className="text-sm font-semibold text-gray-700">Langkah Selanjutnya</p>
@@ -130,7 +133,6 @@ export default async function MahasiswaDashboard() {
         </CardContent>
       </Card>
 
-      {/* Progress stepper */}
       <Card>
         <CardHeader>
           <CardTitle>Progress Tahapan</CardTitle>
@@ -151,7 +153,11 @@ export default async function MahasiswaDashboard() {
                   )}
                   <span
                     className={`text-sm ${
-                      isDone ? "text-gray-400 line-through" : isCurrent ? "font-semibold text-gray-900" : "text-gray-400"
+                      isDone
+                        ? "text-gray-400 line-through"
+                        : isCurrent
+                        ? "font-semibold text-gray-900"
+                        : "text-gray-400"
                     }`}
                   >
                     {STAGE_LABELS[stage]}
@@ -168,27 +174,29 @@ export default async function MahasiswaDashboard() {
         </CardContent>
       </Card>
 
-      {/* Final grade if available */}
-      {proposal?.finalGrade?.weightedTotal !== null && proposal?.finalGrade?.weightedTotal !== undefined && (
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-green-800">Nilai Akhir</p>
-                <p className="text-3xl font-bold text-green-700 mt-1">
-                  {proposal.finalGrade.weightedTotal.toFixed(2)}
-                </p>
+      {proposal?.finalGrade?.weightedTotal !== null &&
+        proposal?.finalGrade?.weightedTotal !== undefined && (
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-green-800">Nilai Akhir</p>
+                  <p className="text-3xl font-bold text-green-700 mt-1">
+                    {proposal.finalGrade.weightedTotal.toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-4xl font-bold text-green-700">
+                    {proposal.finalGrade.gradeIndex}
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    {proposal.finalGrade.passed ? "LULUS" : "TIDAK LULUS"}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-4xl font-bold text-green-700">{proposal.finalGrade.gradeIndex}</p>
-                <p className="text-xs text-green-600 mt-1">
-                  {proposal.finalGrade.passed ? "LULUS" : "TIDAK LULUS"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
     </div>
   );
 }
