@@ -3,19 +3,27 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { checkAndUpdateDeReady } from "@/lib/actions/bimbingan";
 
 export async function verifyEprt(eprtId: string) {
   const session = await auth();
   if (!session) return { error: "Tidak terautentikasi" };
 
-  await prisma.eprtRecord.update({
+  const eprt = await prisma.eprtRecord.update({
     where: { id: eprtId },
     data: {
       status: "VERIFIED",
       verifiedById: session.user.id,
       verifiedAt: new Date(),
     },
+    include: {
+      enrollment: { include: { proposal: { select: { id: true } } } },
+    },
   });
+
+  if (eprt.enrollment.proposal?.id) {
+    await checkAndUpdateDeReady(eprt.enrollment.proposal.id);
+  }
 
   revalidatePath("/dosen-kelas/eprt");
   return { success: true };

@@ -6,6 +6,8 @@ import {
   BookOpen,
   Users,
   ClipboardCheck,
+  Star,
+  CalendarCheck,
 } from "lucide-react";
 
 const navItems = [
@@ -15,19 +17,29 @@ const navItems = [
     icon: <LayoutDashboard className="h-4 w-4" />,
   },
   {
-    href: "/dosen-kelas/kelas",
+    href: "/dosen/kelas",
     label: "Kelas Saya",
     icon: <BookOpen className="h-4 w-4" />,
   },
   {
-    href: "/dosen-kelas/supervisor",
+    href: "/pembimbing/supervisor",
     label: "Mahasiswa Saya",
     icon: <Users className="h-4 w-4" />,
   },
   {
-    href: "/dosen-kelas/desk-evaluator",
-    label: "Evaluasi",
+    href: "/pembimbing/desk-evaluation",
+    label: "Desk Evaluation",
     icon: <ClipboardCheck className="h-4 w-4" />,
+  },
+  {
+    href: "/pembimbing/nilai",
+    label: "Penilaian",
+    icon: <Star className="h-4 w-4" />,
+  },
+  {
+    href: "/pembimbing/seminar",
+    label: "Seminar",
+    icon: <CalendarCheck className="h-4 w-4" />,
   },
 ];
 

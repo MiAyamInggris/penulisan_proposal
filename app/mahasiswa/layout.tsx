@@ -7,6 +7,8 @@ import {
   MessageSquare,
   Upload,
   Star,
+  FilePen,
+  Presentation,
 } from "lucide-react";
 
 const navItems = [
@@ -29,6 +31,16 @@ const navItems = [
     href: "/mahasiswa/eprt",
     label: "EpRT",
     icon: <Upload className="h-4 w-4" />,
+  },
+  {
+    href: "/mahasiswa/revisi",
+    label: "Revisi",
+    icon: <FilePen className="h-4 w-4" />,
+  },
+  {
+    href: "/mahasiswa/seminar",
+    label: "Seminar",
+    icon: <Presentation className="h-4 w-4" />,
   },
   {
     href: "/mahasiswa/nilai",
