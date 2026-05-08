@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DOSEN_KELAS
+  PEMBIMBING
+  MAHASISWA
+}
+
+enum ProdiCode {
+  RPL
+  IF
+  DS
+  SI
+}
+
+enum ProposalStatus {
+  ENROLLED
+  BIMBINGAN
+  DE_SUBMITTED
+  DE_SCORED
+  DE_REVISED
+  SEMINAR_SCHEDULED
+  SEMINAR_COMPLETED
+  COMPLETED
+}
+
+enum EprtStatus {
+  PENDING
+  VERIFIED
+}
+
+enum SeminarStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id         String   @id @default(cuid())
+  name       String
+  email      String   @unique
+  password   String
+  roles      Role[]
+  identifier String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  classesAsDosenKelas Class[]                 @relation("DosenKelas")
+  enrollments         ClassEnrollment[]
+  supervisedAsFirst   Proposal[]              @relation("Supervisor1Assigned")
+  supervisedAsSecond  Proposal[]              @relation("Supervisor2Assigned")
+  requestedAsFirst    Proposal[]              @relation("Supervisor1Requested")
+  requestedAsSecond   Proposal[]              @relation("Supervisor2Requested")
+  bimbinganScores     NilaiBimbingan[]
+  deskEvaluations     DeskEvaluation[]
+  literatureReviews   NilaiLiteratureReview[]
+  presentasiScores    NilaiPresentasi[]
+  eprtRecords         EprtRecord[]            @relation("EprtVerifier")
+}
+
+model Program {
+  id                  String    @id @default(cuid())
+  name                String
+  code                ProdiCode @unique
+  literatureReviewPct Float
+  bimbinganPct        Float
+  deskEvaluationPct   Float
+  presentasiPct       Float
+
+  classes Class[]
+}
+
+model Class {
+  id           String    @id @default(cuid())
+  code         String
+  name         String
+  semester     String
+  academicYear String
+  programId    String
+  dosenKelasId String
+  deDeadline   DateTime?
+  createdAt    DateTime  @default(now())
+
+  program     Program           @relation(fields: [programId], references: [id])
+  dosenKelas  User              @relation("DosenKelas", fields: [dosenKelasId], references: [id])
+  enrollments ClassEnrollment[]
+}
+
+model ClassEnrollment {
+  id         String   @id @default(cuid())
+  classId    String
+  studentId  String
+  enrolledAt DateTime @default(now())
+  isActive   Boolean  @default(true)
+
+  class    Class       @relation(fields: [classId], references: [id])
+  student  User        @relation(fields: [studentId], references: [id])
+  proposal Proposal?
+  eprt     EprtRecord?
+
+  @@unique([classId, studentId])
+}
+
+model Proposal {
+  id                     String         @id @default(cuid())
+  enrollmentId           String         @unique
+  titleId                String
+  titleEn                String?
+  topicArea              String?
+  status                 ProposalStatus @default(ENROLLED)
+  pdfUrl                 String?
+  pdfUploadedAt          DateTime?
+  supervisor1RequestedId String?
+  supervisor2RequestedId String?
+  supervisor1AssignedId  String?
+  supervisor2AssignedId  String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  enrollment           ClassEnrollment       @relation(fields: [enrollmentId], references: [id])
+  supervisor1Requested User?                 @relation("Supervisor1Requested", fields: [supervisor1RequestedId], references: [id])
+  supervisor2Requested User?                 @relation("Supervisor2Requested", fields: [supervisor2RequestedId], references: [id])
+  supervisor1Assigned  User?                 @relation("Supervisor1Assigned", fields: [supervisor1AssignedId], references: [id])
+  supervisor2Assigned  User?                 @relation("Supervisor2Assigned", fields: [supervisor2AssignedId], references: [id])
+
+  bimbinganSessions     BimbinganSession[]
+  nilaiBimbingan        NilaiBimbingan[]
+  deskEvaluation        DeskEvaluation?
+  seminar               Seminar?
+  nilaiLiteratureReview NilaiLiteratureReview[]
+  finalGrade            FinalGrade?
+}
+
+model BimbinganSession {
+  id              String   @id @default(cuid())
+  proposalId      String
+  sessionNumber   Int
+  date            DateTime
+  topicsDiscussed String
+  nextPlan        String
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  proposal Proposal @relation(fields: [proposalId], references: [id])
+}
+
+model EprtRecord {
+  id            String     @id @default(cuid())
+  enrollmentId  String     @unique
+  eprtDate      DateTime
+  screenshotUrl String
+  status        EprtStatus @default(PENDING)
+  verifiedById  String?
+  verifiedAt    DateTime?
+  createdAt     DateTime   @default(now())
+
+  enrollment ClassEnrollment @relation(fields: [enrollmentId], references: [id])
+  verifiedBy User?           @relation("EprtVerifier", fields: [verifiedById], references: [id])
+}
+
+model NilaiBimbingan {
+  id                  String   @id @default(cuid())
+  proposalId          String
+  pembimbingId        String
+  pemilihanTema       Float
+  researchQuestion    Float
+  studiLiteratur1     Float
+  studiLiteratur2     Float
+  rencanaImplementasi Float
+  kemandirian         Float
+  prosesBimbingan     Float
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+  pembimbing User     @relation(fields: [pembimbingId], references: [id])
+
+  @@unique([proposalId, pembimbingId])
+}
+
+model DeskEvaluation {
+  id               String   @id @default(cuid())
+  proposalId       String   @unique
+  reviewerId       String
+  submittedAt      DateTime @default(now())
+  isLate           Boolean  @default(false)
+  latarBelakang    Float
+  formulasiMasalah Float
+  teoriPendukung   Float
+  ideMetode        Float
+  catatanReviewer  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  proposal Proposal @relation(fields: [proposalId], references: [id])
+  reviewer User     @relation(fields: [reviewerId], references: [id])
+}
+
+model Seminar {
+  id            String        @id @default(cuid())
+  proposalId    String        @unique
+  scheduledDate DateTime
+  location      String?
+  status        SeminarStatus @default(SCHEDULED)
+  createdAt     DateTime      @default(now())
+
+  proposal        Proposal          @relation(fields: [proposalId], references: [id])
+  nilaiPresentasi NilaiPresentasi[]
+}
+
+model NilaiPresentasi {
+  id                  String   @id @default(cuid())
+  seminarId           String
+  pembimbingId        String
+  latarBelakangScore  Float
+  teoriPendukungScore Float
+  toolsPemodelanScore Float
+  pemaparanScore      Float
+  komunikasiScore     Float
+  createdAt           DateTime @default(now())
+
+  seminar    Seminar @relation(fields: [seminarId], references: [id])
+  pembimbing User    @relation(fields: [pembimbingId], references: [id])
+
+  @@unique([seminarId, pembimbingId])
+}
+
+model NilaiLiteratureReview {
+  id                  String   @id @default(cuid())
+  proposalId          String
+  pembimbingId        String
+  kualitasPustaka     Float
+  kontenRumusan       Float
+  analisisTujuan      Float
+  kelengkapanKajian   Float
+  kelebihanKekurangan Float
+  relasiTeori         Float
+  catatan             String?
+  createdAt           DateTime @default(now())
+
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+  pembimbing User     @relation(fields: [pembimbingId], references: [id])
+
+  @@unique([proposalId, pembimbingId])
+}
+
+model FinalGrade {
+  id              String    @id @default(cuid())
+  proposalId      String    @unique
+  lrScore         Float?
+  bimbinganScore  Float?
+  deScore         Float?
+  presentasiScore Float?
+  weightedTotal   Float?
+  gradeIndex      String?
+  passed          Boolean?
+  computedAt      DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  proposal Proposal @relation(fields: [proposalId], references: [id])
+}
