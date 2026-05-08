@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   UserCheck,
   ClipboardCheck,
+  ClipboardList,
   BarChart3,
 } from "lucide-react";
 
@@ -30,6 +31,11 @@ const navItems = [
     href: "/dosen-kelas/supervisor",
     label: "Penugasan Pembimbing",
     icon: <UserCheck className="h-4 w-4" />,
+  },
+  {
+    href: "/dosen-kelas/desk-evaluator",
+    label: "Penugasan DE",
+    icon: <ClipboardList className="h-4 w-4" />,
   },
   {
     href: "/dosen-kelas/desk-evaluation",

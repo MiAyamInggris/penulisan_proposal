@@ -59,6 +59,7 @@ model User {
   supervisedAsSecond  Proposal[]              @relation("Supervisor2Assigned")
   requestedAsFirst    Proposal[]              @relation("Supervisor1Requested")
   requestedAsSecond   Proposal[]              @relation("Supervisor2Requested")
+  assignedAsDeskEval  Proposal[]              @relation("DeskEvaluatorAssigned")
   bimbinganScores     NilaiBimbingan[]
   deskEvaluations     DeskEvaluation[]
   literatureReviews   NilaiLiteratureReview[]
@@ -122,6 +123,7 @@ model Proposal {
   supervisor2RequestedId String?
   supervisor1AssignedId  String?
   supervisor2AssignedId  String?
+  deskEvaluatorId        String?
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
@@ -130,6 +132,7 @@ model Proposal {
   supervisor2Requested User?                 @relation("Supervisor2Requested", fields: [supervisor2RequestedId], references: [id])
   supervisor1Assigned  User?                 @relation("Supervisor1Assigned", fields: [supervisor1AssignedId], references: [id])
   supervisor2Assigned  User?                 @relation("Supervisor2Assigned", fields: [supervisor2AssignedId], references: [id])
+  deskEvaluator        User?                 @relation("DeskEvaluatorAssigned", fields: [deskEvaluatorId], references: [id])
 
   bimbinganSessions     BimbinganSession[]
   nilaiBimbingan        NilaiBimbingan[]

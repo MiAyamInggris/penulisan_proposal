@@ -8,6 +8,7 @@ import {
   BookOpen,
   Presentation,
   CalendarPlus,
+  ClipboardCheck,
 } from "lucide-react";
 
 const navItems = [
@@ -30,6 +31,11 @@ const navItems = [
     href: "/pembimbing/literature-review",
     label: "Literature Review",
     icon: <BookOpen className="h-4 w-4" />,
+  },
+  {
+    href: "/pembimbing/desk-evaluation",
+    label: "Desk Evaluation",
+    icon: <ClipboardCheck className="h-4 w-4" />,
   },
   {
     href: "/pembimbing/presentasi",

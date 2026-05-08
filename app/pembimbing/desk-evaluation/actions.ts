@@ -19,6 +19,10 @@ export async function scoreDeskEvaluation(proposalId: string, formData: FormData
   });
 
   if (!proposal) return { error: "Proposal tidak ditemukan" };
+  
+  if (proposal.deskEvaluatorId !== session.user.id) {
+    return { error: "Anda bukan desk evaluator untuk proposal ini" };
+  }
 
   const isLate =
     proposal.enrollment.class.deDeadline
@@ -45,6 +49,7 @@ export async function scoreDeskEvaluation(proposalId: string, formData: FormData
 
   await computeFinalGrade(proposalId);
 
+  revalidatePath("/pembimbing/desk-evaluation");
   revalidatePath("/dosen-kelas/desk-evaluation");
   return { success: true };
 }
