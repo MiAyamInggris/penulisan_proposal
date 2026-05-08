@@ -66,7 +66,7 @@ export default async function MahasiswaLayout({
         userName={session.user.name}
         role="MAHASISWA"
       />
-      <main className="flex-1 overflow-y-auto bg-gray-50">
+      <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>
       </main>
     </div>

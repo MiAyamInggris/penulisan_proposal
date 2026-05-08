@@ -6,7 +6,6 @@ import {
   BookOpen,
   Users,
   ClipboardCheck,
-  Star,
   CalendarCheck,
 } from "lucide-react";
 
@@ -22,19 +21,14 @@ const navItems = [
     icon: <BookOpen className="h-4 w-4" />,
   },
   {
-    href: "/pembimbing/supervisor",
-    label: "Mahasiswa Saya",
+    href: "/dosen/pembimbing",
+    label: "Mahasiswa Bimbingan",
     icon: <Users className="h-4 w-4" />,
   },
   {
     href: "/pembimbing/desk-evaluation",
     label: "Desk Evaluation",
     icon: <ClipboardCheck className="h-4 w-4" />,
-  },
-  {
-    href: "/pembimbing/nilai",
-    label: "Penilaian",
-    icon: <Star className="h-4 w-4" />,
   },
   {
     href: "/pembimbing/seminar",
@@ -60,7 +54,7 @@ export default async function DosenLayout({
         userName={session.user.name}
         role="DOSEN"
       />
-      <main className="flex-1 overflow-y-auto bg-gray-50">
+      <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>
       </main>
     </div>
