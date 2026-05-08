@@ -219,7 +219,7 @@ export function UserTable({ users }: { users: UserRow[] }) {
                 {editUser ? "Edit Pengguna" : "Tambah Pengguna Baru"}
               </DialogTitle>
             </DialogHeader>
-            <UserFormDialog user={editUser} onClose={closeDialog} />
+            <UserFormDialog key={editUser?.id ?? "new"} user={editUser} onClose={closeDialog} />
           </DialogContent>
         </Dialog>
       </div>

@@ -198,6 +198,7 @@ export function ClassTable({
               <DialogTitle>{editClass ? "Edit Kelas" : "Buat Kelas Baru"}</DialogTitle>
             </DialogHeader>
             <ClassFormDialog
+              key={editClass?.id ?? "new"}
               editClass={editClass}
               programs={programs}
               dosenKelasUsers={dosenKelasUsers}

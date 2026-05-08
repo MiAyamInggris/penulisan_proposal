@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, X, RefreshCw } from "lucide-react";
+import { clearDosenRole } from "@/app/dosen-select-role/actions";
 
 interface NavItem {
   href: string;
@@ -84,6 +85,15 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
           <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
             {roleLabels[role] ?? role}
           </span>
+          {role.includes("Dosen") && (
+            <button
+              onClick={() => clearDosenRole()}
+              className="ml-2 inline-flex items-center text-[10px] text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <RefreshCw className="h-2 w-2 mr-1" />
+              Ganti
+            </button>
+          )}
         </div>
         <Button
           variant="ghost"
