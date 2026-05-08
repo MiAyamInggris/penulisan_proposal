@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu, X, RefreshCw } from "lucide-react";
+import { clearDosenRole } from "@/app/dosen-select-role/actions";
 
 interface NavItem {
   href: string;
@@ -22,6 +24,7 @@ interface SidebarProps {
 
 export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const roleLabels: Record<string, string> = {
     ADMIN: "Administrator",
@@ -29,8 +32,8 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
     MAHASISWA: "Mahasiswa",
   };
 
-  return (
-    <div className="flex flex-col w-64 bg-white border-r border-gray-200 h-full">
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100">
         <div className="w-9 h-9 bg-[#C8102E] rounded-lg flex items-center justify-center shrink-0">
@@ -42,6 +45,12 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
           </p>
           <p className="text-xs text-gray-500 truncate">Tel-U Purwokerto</p>
         </div>
+        <button
+          className="ml-auto md:hidden text-gray-400 hover:text-gray-600"
+          onClick={() => setMobileOpen(false)}
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -53,6 +62,7 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setMobileOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 isActive
@@ -75,6 +85,15 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
           <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
             {roleLabels[role] ?? role}
           </span>
+          {role.includes("Dosen") && (
+            <button
+              onClick={() => clearDosenRole()}
+              className="ml-2 inline-flex items-center text-[10px] text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <RefreshCw className="h-2 w-2 mr-1" />
+              Ganti
+            </button>
+          )}
         </div>
         <Button
           variant="ghost"
@@ -87,5 +106,44 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
         </Button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 h-full">
+        <SidebarContent />
+      </div>
+
+      {/* Mobile: top bar with hamburger */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center h-14 px-4 bg-white border-b border-gray-200">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="text-gray-600 hover:text-gray-900 mr-3"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-[#C8102E] rounded flex items-center justify-center">
+            <span className="text-white text-xs font-bold">T</span>
+          </div>
+          <p className="text-sm font-semibold text-gray-900">Proposal TA</p>
+        </div>
+      </div>
+
+      {/* Mobile: slide-in drawer */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div
+            className="fixed inset-0 bg-black/40"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="relative w-72 bg-white h-full shadow-xl">
+            <SidebarContent />
+          </div>
+        </div>
+      )}
+
+    </>
   );
 }

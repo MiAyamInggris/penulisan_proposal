@@ -3,49 +3,37 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import {
   LayoutDashboard,
+  BookOpen,
   Users,
-  ShieldCheck,
-  UserCheck,
   ClipboardCheck,
-  ClipboardList,
-  BarChart3,
+  CalendarCheck,
 } from "lucide-react";
 
 const navItems = [
   {
-    href: "/dosen-kelas/dashboard",
+    href: "/dosen/dashboard",
     label: "Dashboard",
     icon: <LayoutDashboard className="h-4 w-4" />,
   },
   {
-    href: "/dosen-kelas/kelas",
-    label: "Detail Kelas",
+    href: "/dosen/kelas",
+    label: "Kelas Saya",
+    icon: <BookOpen className="h-4 w-4" />,
+  },
+  {
+    href: "/dosen/pembimbing",
+    label: "Mahasiswa Bimbingan",
     icon: <Users className="h-4 w-4" />,
   },
   {
-    href: "/dosen-kelas/eprt",
-    label: "Verifikasi EpRT",
-    icon: <ShieldCheck className="h-4 w-4" />,
-  },
-  {
-    href: "/dosen-kelas/supervisor",
-    label: "Penugasan Pembimbing",
-    icon: <UserCheck className="h-4 w-4" />,
-  },
-  {
-    href: "/dosen-kelas/desk-evaluator",
-    label: "Penugasan DE",
-    icon: <ClipboardList className="h-4 w-4" />,
-  },
-  {
-    href: "/dosen-kelas/desk-evaluation",
+    href: "/pembimbing/desk-evaluation",
     label: "Desk Evaluation",
     icon: <ClipboardCheck className="h-4 w-4" />,
   },
   {
-    href: "/dosen-kelas/nilai",
-    label: "Rekap Nilai",
-    icon: <BarChart3 className="h-4 w-4" />,
+    href: "/pembimbing/seminar",
+    label: "Seminar",
+    icon: <CalendarCheck className="h-4 w-4" />,
   },
 ];
 
@@ -66,7 +54,7 @@ export default async function DosenKelasLayout({
         userName={session.user.name}
         role="DOSEN"
       />
-      <main className="flex-1 overflow-y-auto bg-gray-50">
+      <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>
       </main>
     </div>

@@ -7,6 +7,8 @@ import {
   MessageSquare,
   Upload,
   Star,
+  FilePen,
+  Presentation,
 } from "lucide-react";
 
 const navItems = [
@@ -29,6 +31,16 @@ const navItems = [
     href: "/mahasiswa/eprt",
     label: "EpRT",
     icon: <Upload className="h-4 w-4" />,
+  },
+  {
+    href: "/mahasiswa/revisi",
+    label: "Revisi",
+    icon: <FilePen className="h-4 w-4" />,
+  },
+  {
+    href: "/mahasiswa/seminar",
+    label: "Seminar",
+    icon: <Presentation className="h-4 w-4" />,
   },
   {
     href: "/mahasiswa/nilai",
@@ -54,7 +66,7 @@ export default async function MahasiswaLayout({
         userName={session.user.name}
         role="MAHASISWA"
       />
-      <main className="flex-1 overflow-y-auto bg-gray-50">
+      <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>
       </main>
     </div>

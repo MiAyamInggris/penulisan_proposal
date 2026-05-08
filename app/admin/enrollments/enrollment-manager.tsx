@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { enrollStudent } from "./actions";
-import { UserPlus, Users } from "lucide-react";
+import { enrollStudent, removeEnrollment } from "./actions";
+import { UserPlus, Users, Trash2 } from "lucide-react";
 
 type ClassData = {
   id: string;
@@ -49,6 +49,16 @@ export function EnrollmentManager({
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRemove = async (enrollmentId: string) => {
+    if (!confirm("Hapus pendaftaran mahasiswa ini?")) return;
+    try {
+      await removeEnrollment(enrollmentId);
+      toast.success("Pendaftaran berhasil dihapus");
+    } catch {
+      toast.error("Terjadi kesalahan");
     }
   };
 
@@ -118,12 +128,22 @@ export function EnrollmentManager({
           ) : (
             <div className="space-y-2">
               {currentClass.enrollments.map((e, idx) => (
-                <div key={e.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
-                  <span className="text-xs text-gray-400 w-6">{idx + 1}</span>
-                  <div>
-                    <p className="text-sm font-medium">{e.student.name}</p>
-                    <p className="text-xs text-gray-500">{e.student.identifier}</p>
+                <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 group">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 w-6">{idx + 1}</span>
+                    <div>
+                      <p className="text-sm font-medium">{e.student.name}</p>
+                      <p className="text-xs text-gray-500">{e.student.identifier}</p>
+                    </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemove(e.id)}
+                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
