@@ -12,6 +12,18 @@ export async function selectDosenRole(role: "PEMBIMBING" | "KOORDINATOR") {
   redirect("/dosen/dashboard");
 }
 
+export async function switchDosenContext(
+  role: "PEMBIMBING" | "KOORDINATOR",
+  dest: string
+) {
+  const cookieStore = await cookies();
+  cookieStore.set("dosen-context-role", role, {
+    maxAge: 60 * 60 * 24,
+    path: "/",
+  });
+  redirect(dest);
+}
+
 export async function clearDosenRole() {
   const cookieStore = await cookies();
   cookieStore.delete("dosen-context-role");

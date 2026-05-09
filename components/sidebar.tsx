@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LogOut, Menu, X, RefreshCw } from "lucide-react";
-import { clearDosenRole } from "@/app/dosen-select-role/actions";
+import { switchDosenContext } from "@/app/dosen-select-role/actions";
 
 interface NavItem {
   href: string;
@@ -20,16 +20,22 @@ interface SidebarProps {
   userEmail: string;
   userName: string;
   role: string;
+  roleSwitchTarget?: "PEMBIMBING" | "KOORDINATOR";
 }
 
-export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
+export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const switchDest = roleSwitchTarget === "KOORDINATOR" ? "/dosen/kelas" : "/dosen/pembimbing";
+  const switchLabel = roleSwitchTarget === "PEMBIMBING" ? "Buka sbg Pembimbing" : "Buka sbg Koordinator";
 
   const roleLabels: Record<string, string> = {
     ADMIN: "Administrator",
     DOSEN: "Dosen",
     MAHASISWA: "Mahasiswa",
+    "Dosen Pengampu": "Dosen Pengampu",
+    Pembimbing: "Pembimbing",
   };
 
   const SidebarContent = () => (
@@ -85,16 +91,18 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
           <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
             {roleLabels[role] ?? role}
           </span>
-          {role.includes("Dosen") && (
-            <button
-              onClick={() => clearDosenRole()}
-              className="ml-2 inline-flex items-center text-[10px] text-blue-600 hover:text-blue-800 transition-colors"
-            >
-              <RefreshCw className="h-2 w-2 mr-1" />
-              Ganti
-            </button>
-          )}
         </div>
+        {roleSwitchTarget && (
+          <form action={switchDosenContext.bind(null, roleSwitchTarget, switchDest)}>
+            <button
+              type="submit"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4 shrink-0" />
+              {switchLabel}
+            </button>
+          </form>
+        )}
         <Button
           variant="ghost"
           size="sm"
