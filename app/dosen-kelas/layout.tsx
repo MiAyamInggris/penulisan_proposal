@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { Sidebar } from "@/components/sidebar";
 import {
   LayoutDashboard,
@@ -52,6 +53,11 @@ export default async function DosenKelasLayout({
 
   if (session?.user?.role !== "DOSEN") redirect("/login");
 
+  const cookieStore = await cookies();
+  const contextRole = cookieStore.get("dosen-context-role")?.value;
+  const roleSwitchTarget: "PEMBIMBING" | "KOORDINATOR" =
+    contextRole === "PEMBIMBING" ? "KOORDINATOR" : "PEMBIMBING";
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
@@ -59,7 +65,7 @@ export default async function DosenKelasLayout({
         userEmail={session.user.email}
         userName={session.user.name}
         role="Dosen Pengampu"
-        roleSwitchTarget="PEMBIMBING"
+        roleSwitchTarget={roleSwitchTarget}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>

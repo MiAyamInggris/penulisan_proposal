@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LogOut, Menu, X, RefreshCw } from "lucide-react";
-import { selectDosenRole } from "@/app/dosen-select-role/actions";
+import { switchDosenContext } from "@/app/dosen-select-role/actions";
 
 interface NavItem {
   href: string;
@@ -26,6 +26,9 @@ interface SidebarProps {
 export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const switchDest = roleSwitchTarget === "KOORDINATOR" ? "/dosen/kelas" : "/dosen/pembimbing";
+  const switchLabel = roleSwitchTarget === "PEMBIMBING" ? "Buka sbg Pembimbing" : "Buka sbg Koordinator";
 
   const roleLabels: Record<string, string> = {
     ADMIN: "Administrator",
@@ -90,15 +93,15 @@ export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget 
           </span>
         </div>
         {roleSwitchTarget && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-            onClick={() => selectDosenRole(roleSwitchTarget)}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            {roleSwitchTarget === "PEMBIMBING" ? "Buka sbg Pembimbing" : "Buka sbg Koordinator"}
-          </Button>
+          <form action={switchDosenContext.bind(null, roleSwitchTarget, switchDest)}>
+            <button
+              type="submit"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4 shrink-0" />
+              {switchLabel}
+            </button>
+          </form>
         )}
         <Button
           variant="ghost"
