@@ -15,6 +15,9 @@ export async function addBimbinganSession(formData: FormData) {
 
   if (!enrollment?.proposal) return { error: "Proposal belum terdaftar" };
 
+  if (!enrollment.proposal.supervisor1AssignedId)
+    return { error: "Pembimbing belum ditugaskan. Tunggu penugasan dari Dosen Kelas." };
+
   const count = enrollment.proposal.bimbinganSessions.length;
 
   await prisma.bimbinganSession.create({

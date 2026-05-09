@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ type EprtRecord = {
 
 export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -32,6 +34,7 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
         toast.error(result.error);
       } else {
         toast.success("EpRT berhasil diupload! Menunggu verifikasi dari Dosen Kelas.");
+        router.refresh();
       }
     } finally {
       setLoading(false);
@@ -114,7 +117,7 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
               id="screenshot"
               name="screenshot"
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               required
             />
             <p className="text-xs text-gray-500">Format: JPG, PNG, atau PDF. Maks 5MB.</p>

@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { addBimbinganSession } from "./actions";
-import { Plus, CalendarDays } from "lucide-react";
+import { Plus, CalendarDays, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
@@ -22,7 +22,13 @@ type Session = {
   notes: string | null;
 };
 
-export function BimbinganLog({ sessions }: { sessions: Session[] }) {
+export function BimbinganLog({
+  sessions,
+  supervisorAssigned,
+}: {
+  sessions: Session[];
+  supervisorAssigned: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +49,20 @@ export function BimbinganLog({ sessions }: { sessions: Session[] }) {
   };
 
   const count = sessions.length;
+
+  if (!supervisorAssigned) {
+    return (
+      <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+        <Lock className="h-5 w-5 shrink-0" />
+        <div>
+          <p className="font-medium">Pembimbing belum ditugaskan</p>
+          <p className="text-sm text-yellow-700">
+            Log bimbingan baru dapat dicatat setelah Dosen Kelas menugaskan pembimbing untuk proposal Anda.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

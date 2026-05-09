@@ -18,6 +18,8 @@ export default async function BimbinganPage() {
     },
   });
 
+  const supervisorAssigned = !!enrollment?.proposal?.supervisor1AssignedId;
+
   return (
     <div className="space-y-6">
       <div>
@@ -30,7 +32,10 @@ export default async function BimbinganPage() {
       {!enrollment?.proposal ? (
         <p className="text-gray-500">Daftarkan proposal terlebih dahulu sebelum mencatat bimbingan.</p>
       ) : (
-        <BimbinganLog sessions={enrollment.proposal.bimbinganSessions} />
+        <BimbinganLog
+          sessions={enrollment.proposal.bimbinganSessions}
+          supervisorAssigned={supervisorAssigned}
+        />
       )}
     </div>
   );
