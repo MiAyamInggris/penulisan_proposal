@@ -30,6 +30,8 @@ export function Sidebar({ navItems, userEmail, userName, role }: SidebarProps) {
     ADMIN: "Administrator",
     DOSEN: "Dosen",
     MAHASISWA: "Mahasiswa",
+    "Dosen Pengampu": "Dosen Pengampu",
+    Pembimbing: "Pembimbing",
   };
 
   const SidebarContent = () => (

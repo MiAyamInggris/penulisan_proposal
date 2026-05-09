@@ -9,9 +9,15 @@ import {
   Users,
   ClipboardCheck,
   CalendarCheck,
+  ShieldCheck,
+  UserCheck,
+  BarChart3,
+  ClipboardList,
+  Presentation,
+  CalendarPlus,
 } from "lucide-react";
 
-const navItems = [
+const koordinatorNavItems = [
   {
     href: "/dosen/dashboard",
     label: "Dashboard",
@@ -23,21 +29,61 @@ const navItems = [
     icon: <BookOpen className="h-4 w-4" />,
   },
   {
+    href: "/dosen-kelas/eprt",
+    label: "Verifikasi EpRT",
+    icon: <ShieldCheck className="h-4 w-4" />,
+  },
+  {
+    href: "/dosen-kelas/supervisor",
+    label: "Penugasan Pembimbing",
+    icon: <UserCheck className="h-4 w-4" />,
+  },
+  {
+    href: "/dosen-kelas/desk-evaluation",
+    label: "Desk Evaluation",
+    icon: <ClipboardCheck className="h-4 w-4" />,
+  },
+  {
+    href: "/dosen-kelas/nilai",
+    label: "Rekap Nilai",
+    icon: <BarChart3 className="h-4 w-4" />,
+  },
+];
+
+const pembimbingNavItems = [
+  {
+    href: "/dosen/dashboard",
+    label: "Dashboard",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+  },
+  {
     href: "/dosen/pembimbing",
     label: "Mahasiswa Bimbingan",
     icon: <Users className="h-4 w-4" />,
   },
   {
-    href: "/pembimbing/desk-evaluation",
-    label: "Desk Evaluation",
-    icon: <ClipboardCheck className="h-4 w-4" />,
+    href: "/pembimbing/bimbingan",
+    label: "Nilai Bimbingan",
+    icon: <ClipboardList className="h-4 w-4" />,
+  },
+  {
+    href: "/pembimbing/literature-review",
+    label: "Literature Review",
+    icon: <BookOpen className="h-4 w-4" />,
+  },
+  {
+    href: "/pembimbing/presentasi",
+    label: "Nilai Presentasi",
+    icon: <Presentation className="h-4 w-4" />,
   },
   {
     href: "/pembimbing/seminar",
-    label: "Seminar",
-    icon: <CalendarCheck className="h-4 w-4" />,
+    label: "Jadwal Seminar",
+    icon: <CalendarPlus className="h-4 w-4" />,
   },
 ];
+
+void CalendarCheck;
 
 export default async function DosenLayout({
   children,
@@ -61,7 +107,9 @@ export default async function DosenLayout({
     }
   }
 
-  const roleLabel = contextRole === "KOORDINATOR" ? "Dosen Pengampu" : "Dosen";
+  const isKoordinator = contextRole === "KOORDINATOR";
+  const roleLabel = isKoordinator ? "Dosen Pengampu" : "Pembimbing";
+  const navItems = isKoordinator ? koordinatorNavItems : pembimbingNavItems;
 
   return (
     <div className="flex h-screen overflow-hidden">

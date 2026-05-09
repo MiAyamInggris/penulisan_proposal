@@ -5,8 +5,9 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  ClipboardCheck,
-  CalendarCheck,
+  ClipboardList,
+  Presentation,
+  CalendarPlus,
 } from "lucide-react";
 
 const navItems = [
@@ -16,24 +17,29 @@ const navItems = [
     icon: <LayoutDashboard className="h-4 w-4" />,
   },
   {
-    href: "/dosen/kelas",
-    label: "Kelas Saya",
-    icon: <BookOpen className="h-4 w-4" />,
-  },
-  {
     href: "/dosen/pembimbing",
     label: "Mahasiswa Bimbingan",
     icon: <Users className="h-4 w-4" />,
   },
   {
-    href: "/pembimbing/desk-evaluation",
-    label: "Desk Evaluation",
-    icon: <ClipboardCheck className="h-4 w-4" />,
+    href: "/pembimbing/bimbingan",
+    label: "Nilai Bimbingan",
+    icon: <ClipboardList className="h-4 w-4" />,
+  },
+  {
+    href: "/pembimbing/literature-review",
+    label: "Literature Review",
+    icon: <BookOpen className="h-4 w-4" />,
+  },
+  {
+    href: "/pembimbing/presentasi",
+    label: "Nilai Presentasi",
+    icon: <Presentation className="h-4 w-4" />,
   },
   {
     href: "/pembimbing/seminar",
-    label: "Seminar",
-    icon: <CalendarCheck className="h-4 w-4" />,
+    label: "Jadwal Seminar",
+    icon: <CalendarPlus className="h-4 w-4" />,
   },
 ];
 
@@ -52,7 +58,7 @@ export default async function PembimbingLayout({
         navItems={navItems}
         userEmail={session.user.email}
         userName={session.user.name}
-        role="DOSEN"
+        role="Pembimbing"
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>

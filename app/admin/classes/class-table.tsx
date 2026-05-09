@@ -82,7 +82,7 @@ function ClassFormDialog({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label>Semester</Label>
-          <Select value={semester} onValueChange={setSemester}>
+          <Select value={semester} onValueChange={(v) => v !== null && setSemester(v)}>
             <SelectTrigger>
               <SelectValue placeholder="Pilih semester" />
             </SelectTrigger>
@@ -99,7 +99,7 @@ function ClassFormDialog({
       </div>
       <div className="space-y-1">
         <Label>Program Studi</Label>
-        <Select value={programId} onValueChange={setProgramId}>
+        <Select value={programId} onValueChange={(v) => v !== null && setProgramId(v)}>
           <SelectTrigger>
             <SelectValue placeholder="Pilih prodi" />
           </SelectTrigger>
@@ -114,7 +114,7 @@ function ClassFormDialog({
       </div>
       <div className="space-y-1">
         <Label>Dosen Kelas</Label>
-        <Select value={dosenKelasId} onValueChange={setDosenKelasId}>
+        <Select value={dosenKelasId} onValueChange={(v) => v !== null && setDosenKelasId(v)}>
           <SelectTrigger>
             <SelectValue placeholder="Pilih dosen kelas" />
           </SelectTrigger>
