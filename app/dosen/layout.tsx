@@ -97,19 +97,20 @@ export default async function DosenLayout({
   const cookieStore = await cookies();
   const contextRole = cookieStore.get("dosen-context-role")?.value;
 
-  if (!contextRole) {
-    const coordinatorClasses = await prisma.class.count({
-      where: { dosenKelasId: session.user.id },
-    });
+  const coordinatorClasses = await prisma.class.count({
+    where: { dosenKelasId: session.user.id },
+  });
 
-    if (coordinatorClasses > 0) {
-      redirect("/dosen-select-role");
-    }
+  if (!contextRole && coordinatorClasses > 0) {
+    redirect("/dosen-select-role");
   }
 
   const isKoordinator = contextRole === "KOORDINATOR";
   const roleLabel = isKoordinator ? "Dosen Pengampu" : "Pembimbing";
   const navItems = isKoordinator ? koordinatorNavItems : pembimbingNavItems;
+  const roleSwitchTarget: "PEMBIMBING" | "KOORDINATOR" | undefined = coordinatorClasses > 0
+    ? (isKoordinator ? "PEMBIMBING" : "KOORDINATOR")
+    : undefined;
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -118,6 +119,7 @@ export default async function DosenLayout({
         userEmail={session.user.email}
         userName={session.user.name}
         role={roleLabel}
+        roleSwitchTarget={roleSwitchTarget}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/sidebar";
 import {
   LayoutDashboard,
@@ -52,6 +53,10 @@ export default async function PembimbingLayout({
 
   if (session?.user?.role !== "DOSEN") redirect("/login");
 
+  const coordinatorClasses = await prisma.class.count({
+    where: { dosenKelasId: session.user.id },
+  });
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
@@ -59,6 +64,7 @@ export default async function PembimbingLayout({
         userEmail={session.user.email}
         userName={session.user.name}
         role="Pembimbing"
+        roleSwitchTarget={coordinatorClasses > 0 ? "KOORDINATOR" : undefined}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>

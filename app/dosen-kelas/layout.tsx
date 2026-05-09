@@ -59,6 +59,7 @@ export default async function DosenKelasLayout({
         userEmail={session.user.email}
         userName={session.user.name}
         role="Dosen Pengampu"
+        roleSwitchTarget="PEMBIMBING"
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>
