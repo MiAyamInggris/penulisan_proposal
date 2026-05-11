@@ -1,0 +1,148 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { submitDeskEvaluation } from "../actions";
+
+export function DEForm({ proposal }: { proposal: any }) {
+  const router = useRouter();
+  const de = proposal.deskEvaluation;
+  const [loading, setLoading] = useState(false);
+  
+  const [scores, setScores] = useState({
+    latarBelakang: de?.latarBelakang || 0,
+    formulasiMasalah: de?.formulasiMasalah || 0,
+    teoriPendukung: de?.teoriPendukung || 0,
+    ideMetode: de?.ideMetode || 0,
+    catatanReviewer: de?.catatanReviewer || "",
+  });
+
+  const total = scores.latarBelakang + scores.formulasiMasalah + scores.teoriPendukung + scores.ideMetode;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await submitDeskEvaluation({
+        proposalId: proposal.id,
+        ...scores,
+      });
+      toast.success("Penilaian berhasil disimpan");
+      router.push("/dosen/desk-evaluation-assessment");
+      router.refresh();
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menyimpan penilaian");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Komponen Penilaian (0 - 25 per item)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="latarBelakang">Latar Belakang & Masalah (Max 25)</Label>
+              <Input
+                id="latarBelakang"
+                type="number"
+                min="0"
+                max="25"
+                step="0.5"
+                value={scores.latarBelakang}
+                onChange={(e) => setScores({ ...scores, latarBelakang: parseFloat(e.target.value) || 0 })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="formulasiMasalah">Perumusan Masalah & Tujuan (Max 25)</Label>
+              <Input
+                id="formulasiMasalah"
+                type="number"
+                min="0"
+                max="25"
+                step="0.5"
+                value={scores.formulasiMasalah}
+                onChange={(e) => setScores({ ...scores, formulasiMasalah: parseFloat(e.target.value) || 0 })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="teoriPendukung">Tinjauan Pustaka & Dasar Teori (Max 25)</Label>
+              <Input
+                id="teoriPendukung"
+                type="number"
+                min="0"
+                max="25"
+                step="0.5"
+                value={scores.teoriPendukung}
+                onChange={(e) => setScores({ ...scores, teoriPendukung: parseFloat(e.target.value) || 0 })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ideMetode">Metodologi & Rencana Kerja (Max 25)</Label>
+              <Input
+                id="ideMetode"
+                type="number"
+                min="0"
+                max="25"
+                step="0.5"
+                value={scores.ideMetode}
+                onChange={(e) => setScores({ ...scores, ideMetode: parseFloat(e.target.value) || 0 })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-gray-700">Total Skor:</span>
+              <span className={`text-2xl font-bold ${total >= 50 ? 'text-green-600' : 'text-red-600'}`}>
+                {total.toFixed(1)}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-4">
+            <Label htmlFor="catatan">Catatan / Review untuk Mahasiswa</Label>
+            <Textarea
+              id="catatan"
+              placeholder="Berikan saran atau perbaikan untuk proposal ini..."
+              rows={4}
+              value={scores.catatanReviewer}
+              onChange={(e) => setScores({ ...scores, catatanReviewer: e.target.value })}
+            />
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-3 bg-gray-50 rounded-b-lg py-4">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => router.back()}
+            disabled={loading}
+          >
+            Batal
+          </Button>
+          <Button 
+            type="submit" 
+            className="bg-[#C8102E] hover:bg-[#a50d26]"
+            disabled={loading}
+          >
+            {loading ? "Menyimpan..." : "Simpan Penilaian"}
+          </Button>
+        </CardFooter>
+      </Card>
+    </form>
+  );
+}

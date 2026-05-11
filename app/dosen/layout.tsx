@@ -107,7 +107,22 @@ export default async function DosenLayout({
 
   const isKoordinator = contextRole === "KOORDINATOR";
   const roleLabel = isKoordinator ? "Dosen Pengampu" : "Pembimbing";
-  const navItems = isKoordinator ? koordinatorNavItems : pembimbingNavItems;
+  
+  // Check if assigned as Desk Evaluator
+  const assignedDECount = await prisma.proposal.count({
+    where: { deskEvaluatorId: session.user.id },
+  });
+
+  let navItems = isKoordinator ? [...koordinatorNavItems] : [...pembimbingNavItems];
+  
+  if (assignedDECount > 0) {
+    navItems.push({
+      href: "/dosen/desk-evaluation-assessment",
+      label: "Desk Evaluation Assessment",
+      icon: <ClipboardCheck className="h-4 w-4 text-orange-600" />,
+    });
+  }
+
   const roleSwitchTarget: "PEMBIMBING" | "KOORDINATOR" | undefined = coordinatorClasses > 0
     ? (isKoordinator ? "PEMBIMBING" : "KOORDINATOR")
     : undefined;

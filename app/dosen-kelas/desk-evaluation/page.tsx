@@ -27,8 +27,15 @@ export default async function DeskEvaluationPage() {
         },
       },
       deskEvaluation: true,
+      deskEvaluator: { select: { id: true, name: true } },
     },
     orderBy: { updatedAt: "asc" },
+  });
+
+  const lecturers = await prisma.user.findMany({
+    where: { role: "DOSEN" },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
   });
 
   return (
@@ -36,10 +43,10 @@ export default async function DeskEvaluationPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Desk Evaluation (TA1-02)</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Nilai proposal mahasiswa yang sudah dikumpulkan
+          Nilai proposal mahasiswa yang sudah dikumpulkan dan tugaskan Desk Evaluator
         </p>
       </div>
-      <DEList proposals={proposals} />
+      <DEList proposals={proposals} lecturers={lecturers} />
     </div>
   );
 }
