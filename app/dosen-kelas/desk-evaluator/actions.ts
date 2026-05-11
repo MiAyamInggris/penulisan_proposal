@@ -37,5 +37,9 @@ export async function assignDeskEvaluator(
   });
 
   revalidatePath("/dosen-kelas/desk-evaluator");
+  revalidatePath("/dosen/desk-evaluation-assessment");
+  revalidatePath("/dosen-kelas", "layout");
+  revalidatePath("/pembimbing", "layout");
+  revalidatePath("/dosen", "layout");
   return { success: true };
 }

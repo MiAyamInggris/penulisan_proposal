@@ -7,11 +7,12 @@ import {
   Users,
   BookOpen,
   ClipboardList,
+  ClipboardEdit,
   Presentation,
   CalendarPlus,
 } from "lucide-react";
 
-const navItems = [
+const baseNavItems = [
   {
     href: "/dosen/dashboard",
     label: "Dashboard",
@@ -53,9 +54,22 @@ export default async function PembimbingLayout({
 
   if (session?.user?.role !== "DOSEN") redirect("/login");
 
-  const coordinatorClasses = await prisma.class.count({
-    where: { dosenKelasId: session.user.id },
-  });
+  const [coordinatorClasses, assignedDECount] = await Promise.all([
+    prisma.class.count({ where: { dosenKelasId: session.user.id } }),
+    prisma.proposal.count({ where: { deskEvaluatorId: session.user.id } }),
+  ]);
+
+  const navItems =
+    assignedDECount > 0
+      ? [
+          ...baseNavItems,
+          {
+            href: "/dosen/desk-evaluation-assessment",
+            label: "Desk Evaluation Assessment",
+            icon: <ClipboardEdit className="h-4 w-4" />,
+          },
+        ]
+      : baseNavItems;
 
   return (
     <div className="flex h-screen overflow-hidden">

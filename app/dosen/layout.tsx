@@ -39,7 +39,7 @@ const koordinatorNavItems = [
     icon: <UserCheck className="h-4 w-4" />,
   },
   {
-    href: "/dosen-kelas/desk-evaluation",
+    href: "/dosen-kelas/desk-evaluator",
     label: "Penugasan Desk Evaluator",
     icon: <ClipboardCheck className="h-4 w-4" />,
   },

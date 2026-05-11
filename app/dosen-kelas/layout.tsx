@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/sidebar";
 import {
   LayoutDashboard,
@@ -8,10 +9,11 @@ import {
   ShieldCheck,
   UserCheck,
   ClipboardCheck,
+  ClipboardEdit,
   BarChart3,
 } from "lucide-react";
 
-const navItems = [
+const baseNavItems = [
   {
     href: "/dosen/dashboard",
     label: "Dashboard",
@@ -33,7 +35,7 @@ const navItems = [
     icon: <UserCheck className="h-4 w-4" />,
   },
   {
-    href: "/dosen-kelas/desk-evaluation",
+    href: "/dosen-kelas/desk-evaluator",
     label: "Penugasan Desk Evaluator",
     icon: <ClipboardCheck className="h-4 w-4" />,
   },
@@ -57,6 +59,22 @@ export default async function DosenKelasLayout({
   const contextRole = cookieStore.get("dosen-context-role")?.value;
   const roleSwitchTarget: "PEMBIMBING" | "KOORDINATOR" =
     contextRole === "PEMBIMBING" ? "KOORDINATOR" : "PEMBIMBING";
+
+  const assignedDECount = await prisma.proposal.count({
+    where: { deskEvaluatorId: session.user.id },
+  });
+
+  const navItems =
+    assignedDECount > 0
+      ? [
+          ...baseNavItems,
+          {
+            href: "/dosen/desk-evaluation-assessment",
+            label: "Desk Evaluation Assessment",
+            icon: <ClipboardEdit className="h-4 w-4" />,
+          },
+        ]
+      : baseNavItems;
 
   return (
     <div className="flex h-screen overflow-hidden">
