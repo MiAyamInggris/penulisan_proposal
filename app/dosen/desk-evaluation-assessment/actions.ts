@@ -19,16 +19,12 @@ export async function submitDeskEvaluation(data: {
 
   const proposal = await prisma.proposal.findUnique({
     where: { id: data.proposalId },
-    include: { enrollment: { include: { class: true } } },
   });
 
   if (!proposal) throw new Error("Proposal not found");
   if (proposal.deskEvaluatorId !== session.user.id) {
     throw new Error("You are not assigned as the desk evaluator for this proposal");
   }
-
-  const deDeadline = proposal.enrollment.class.deDeadline;
-  const isLate = deDeadline ? new Date() > new Date(deDeadline) : false;
 
   await prisma.deskEvaluation.upsert({
     where: { proposalId: data.proposalId },
@@ -38,7 +34,7 @@ export async function submitDeskEvaluation(data: {
       teoriPendukung: data.teoriPendukung,
       ideMetode: data.ideMetode,
       catatanReviewer: data.catatanReviewer,
-      isLate,
+      isLate: false,
       evaluatorId: session.user.id,
     },
     create: {
@@ -49,11 +45,10 @@ export async function submitDeskEvaluation(data: {
       teoriPendukung: data.teoriPendukung,
       ideMetode: data.ideMetode,
       catatanReviewer: data.catatanReviewer,
-      isLate,
+      isLate: false,
     },
   });
 
-  // Update proposal status if needed
   if (proposal.status === "DE_READY" || proposal.status === "ASSIGNED") {
     await prisma.proposal.update({
       where: { id: data.proposalId },
@@ -64,6 +59,6 @@ export async function submitDeskEvaluation(data: {
   revalidatePath("/dosen/desk-evaluation-assessment");
   revalidatePath(`/dosen/desk-evaluation-assessment/${data.proposalId}`);
   revalidatePath("/dosen-kelas/desk-evaluation");
-  
+
   return { success: true };
 }

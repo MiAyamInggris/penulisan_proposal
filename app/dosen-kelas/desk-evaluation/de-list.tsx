@@ -66,10 +66,9 @@ export function DEList({
     <div className="space-y-3">
       {proposals.map((p) => {
         const de = p.deskEvaluation;
-        const rawTotal = de
+        const finalScore = de
           ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode
           : null;
-        const finalScore = de ? (de.isLate ? Math.min(rawTotal!, 51) : rawTotal!) : null;
 
         return (
           <Card key={p.id}>
@@ -81,9 +80,6 @@ export function DEList({
                     <span className="font-medium text-gray-900">{p.enrollment.student.name}</span>
                     <span className="text-xs text-gray-500">{p.enrollment.student.identifier}</span>
                     <StatusBadge status={p.status} type="proposal" />
-                    {de?.isLate && (
-                      <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded">Terlambat</span>
-                    )}
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-1">{p.titleId}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -93,9 +89,6 @@ export function DEList({
                         <span className="font-bold text-gray-900">
                           {finalScore?.toFixed(1)}
                         </span>
-                        {de.isLate && rawTotal! > 51 && (
-                          <span className="text-xs text-red-500 ml-1">(raw: {rawTotal?.toFixed(1)})</span>
-                        )}
                       </p>
                     )}
                     <p className="text-sm">

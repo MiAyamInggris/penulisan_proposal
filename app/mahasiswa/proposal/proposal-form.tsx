@@ -19,8 +19,20 @@ export function ProposalForm({ pembimbingList }: { pembimbingList: Pembimbing[] 
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    const file = (form.querySelector('[name="proposalFile"]') as HTMLInputElement)?.files?.[0];
+    if (file && file.size > 0) {
+      if (file.type !== "application/pdf") {
+        toast.error("Hanya file PDF yang diperbolehkan");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Ukuran file maksimal 5 MB");
+        return;
+      }
+    }
     setLoading(true);
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
     if (supervisor1) formData.set("supervisor1RequestedId", supervisor1);
     if (supervisor2) formData.set("supervisor2RequestedId", supervisor2);
     try {
@@ -68,6 +80,18 @@ export function ProposalForm({ pembimbingList }: { pembimbingList: Pembimbing[] 
               name="topicArea"
               placeholder="Contoh: Machine Learning, Web Development, dll."
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="proposalFile">File Proposal (PDF, maks. 5 MB)</Label>
+            <Input
+              id="proposalFile"
+              name="proposalFile"
+              type="file"
+              accept="application/pdf"
+            />
+            <p className="text-xs text-gray-500">
+              Opsional saat pendaftaran. Dapat diunggah ulang setelah proposal terdaftar.
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">

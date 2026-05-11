@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { assignSupervisors } from "./actions";
-import { UserCheck } from "lucide-react";
+import { UserCheck, Download } from "lucide-react";
 
 type Proposal = {
   id: string;
   titleId: string;
+  proposalUrl: string | null;
   enrollment: {
     student: { name: string; identifier: string };
     class: { code: string };
@@ -65,10 +66,21 @@ export function SupervisorAssignList({
         <Card key={p.id}>
           <CardContent className="pt-4 space-y-3">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{p.enrollment.class.code}</span>
                 <span className="font-medium text-gray-900">{p.enrollment.student.name}</span>
                 <span className="text-xs text-gray-500">{p.enrollment.student.identifier}</span>
+                {p.proposalUrl && (
+                  <a
+                    href={p.proposalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                  >
+                    <Download className="h-3 w-3" />
+                    Proposal PDF
+                  </a>
+                )}
               </div>
               <p className="text-sm text-gray-600 mt-1 line-clamp-1">{p.titleId}</p>
             </div>

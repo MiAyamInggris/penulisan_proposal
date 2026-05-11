@@ -13,11 +13,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { assignDeskEvaluator } from "./actions";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Download } from "lucide-react";
 
 type Proposal = {
   id: string;
   titleId: string;
+  proposalUrl: string | null;
   enrollment: {
     student: { name: string; identifier: string };
     class: { code: string };
@@ -114,6 +115,17 @@ export function DEAssignList({
                   <span className="text-xs text-gray-500">
                     {p.enrollment.student.identifier}
                   </span>
+                  {p.proposalUrl && (
+                    <a
+                      href={p.proposalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                    >
+                      <Download className="h-3 w-3" />
+                      Proposal PDF
+                    </a>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600 mt-1 line-clamp-1">
                   {p.titleId}
