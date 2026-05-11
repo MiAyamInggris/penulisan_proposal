@@ -41,7 +41,7 @@ export default async function DeskEvaluationPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Desk Evaluation (TA1-02)</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Penugasan Desk Evaluator (TA1-02)</h1>
         <p className="text-sm text-gray-500 mt-1">
           Nilai proposal mahasiswa yang sudah dikumpulkan dan tugaskan Desk Evaluator
         </p>
