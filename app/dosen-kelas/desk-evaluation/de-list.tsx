@@ -38,7 +38,7 @@ export function DEList({
   lecturers: Lecturer[];
 }) {
   const [loading, setLoading] = useState<string | null>(null);
-  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [selections, setSelections] = useState<Record<string, string | null>>({});
 
   const handleAssign = async (proposalId: string) => {
     const evaluatorId = selections[proposalId];

@@ -34,7 +34,7 @@ const navItems = [
   },
   {
     href: "/dosen-kelas/desk-evaluation",
-    label: "Desk Evaluation",
+    label: "Penugasan Desk Evaluator",
     icon: <ClipboardCheck className="h-4 w-4" />,
   },
   {
