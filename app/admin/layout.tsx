@@ -7,6 +7,7 @@ import {
   BookOpen,
   GraduationCap,
   School,
+  Settings,
 } from "lucide-react";
 
 const navItems = [
@@ -34,6 +35,11 @@ const navItems = [
     href: "/admin/programs",
     label: "Program Studi",
     icon: <School className="h-4 w-4" />,
+  },
+  {
+    href: "/account/settings",
+    label: "Pengaturan Akun",
+    icon: <Settings className="h-4 w-4" />,
   },
 ];
 

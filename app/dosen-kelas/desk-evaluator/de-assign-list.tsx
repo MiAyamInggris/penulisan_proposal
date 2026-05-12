@@ -100,6 +100,12 @@ export function DEAssignList({
 
         const currentEval = p.deskEvaluator;
 
+        // Ensure current evaluator appears in select options even if filtered
+        const selectOptions =
+          currentEval && !availablePembimbing.some((pb) => pb.id === currentEval.id)
+            ? [currentEval, ...availablePembimbing]
+            : availablePembimbing;
+
         return (
           <Card key={p.id}>
             <CardContent className="pt-4 space-y-3">
@@ -173,12 +179,12 @@ export function DEAssignList({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">– Pilih evaluator –</SelectItem>
-                    {availablePembimbing.length === 0 ? (
+                    {selectOptions.length === 0 ? (
                       <SelectItem value="__empty__" disabled>
                         Semua dosen sudah jadi pembimbing
                       </SelectItem>
                     ) : (
-                      availablePembimbing.map((pb) => (
+                      selectOptions.map((pb) => (
                         <SelectItem key={pb.id} value={pb.id}>
                           {pb.name}
                         </SelectItem>

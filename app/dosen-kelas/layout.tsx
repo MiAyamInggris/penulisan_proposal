@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   ClipboardEdit,
   BarChart3,
+  Settings,
 } from "lucide-react";
 
 const baseNavItems = [
@@ -43,6 +44,11 @@ const baseNavItems = [
     href: "/dosen-kelas/nilai",
     label: "Rekap Nilai",
     icon: <BarChart3 className="h-4 w-4" />,
+  },
+  {
+    href: "/account/settings",
+    label: "Pengaturan Akun",
+    icon: <Settings className="h-4 w-4" />,
   },
 ];
 

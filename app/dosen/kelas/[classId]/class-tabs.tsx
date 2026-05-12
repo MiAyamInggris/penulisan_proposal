@@ -454,13 +454,7 @@ function MonitoringTab({ enrollments }: { enrollments: Enrollment[] }) {
         {enrollments.map((e) => {
           const de = e.proposal?.deskEvaluation;
           const deScore = de
-            ? Math.min(
-                de.latarBelakang +
-                  de.formulasiMasalah +
-                  de.teoriPendukung +
-                  de.ideMetode,
-                de.isLate ? 51 : Infinity
-              )
+            ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode
             : null;
 
           return (
@@ -532,7 +526,7 @@ function PengaturanTab({
               Deadline Desk Evaluation
             </p>
             <p className="text-xs text-gray-500 mb-3">
-              Penilaian DE setelah batas waktu ini akan dikap maksimum 51.
+              Atur batas waktu pengumpulan Desk Evaluation untuk kelas ini.
             </p>
             <Input
               type="datetime-local"

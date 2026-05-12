@@ -103,21 +103,20 @@ export default async function NilaiPage() {
               </CardHeader>
               <CardContent>
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  {proposal.deskEvaluation.isLate && (
-                    <p className="text-xs text-red-500 mb-2">⚠ Dikumpulkan terlambat – nilai dibatasi maksimal 51</p>
-                  )}
                   <div className="flex justify-between">
                     <div className="space-y-1 text-sm text-gray-600">
                       <p>Latar Belakang: {proposal.deskEvaluation.latarBelakang}/25</p>
-                      <p>Formulasi Masalah: {proposal.deskEvaluation.formulasiMasalah}/30</p>
-                      <p>Teori Pendukung: {proposal.deskEvaluation.teoriPendukung}/30</p>
-                      <p>Ide/Metode: {proposal.deskEvaluation.ideMetode}/15</p>
+                      <p>Formulasi Masalah: {proposal.deskEvaluation.formulasiMasalah}/25</p>
+                      <p>Teori Pendukung: {proposal.deskEvaluation.teoriPendukung}/25</p>
+                      <p>Ide & Metode: {proposal.deskEvaluation.ideMetode}/25</p>
                     </div>
                     <div className="text-right">
                       <span className="text-2xl font-bold text-gray-900">
-                        {Math.min(
-                          proposal.deskEvaluation.latarBelakang + proposal.deskEvaluation.formulasiMasalah + proposal.deskEvaluation.teoriPendukung + proposal.deskEvaluation.ideMetode,
-                          proposal.deskEvaluation.isLate ? 51 : 100
+                        {(
+                          proposal.deskEvaluation.latarBelakang +
+                          proposal.deskEvaluation.formulasiMasalah +
+                          proposal.deskEvaluation.teoriPendukung +
+                          proposal.deskEvaluation.ideMetode
                         ).toFixed(1)}
                       </span>
                     </div>

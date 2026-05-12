@@ -10,6 +10,7 @@ import {
   ClipboardEdit,
   Presentation,
   CalendarPlus,
+  Settings,
 } from "lucide-react";
 
 const baseNavItems = [
@@ -42,6 +43,11 @@ const baseNavItems = [
     href: "/pembimbing/seminar",
     label: "Jadwal Seminar",
     icon: <CalendarPlus className="h-4 w-4" />,
+  },
+  {
+    href: "/account/settings",
+    label: "Pengaturan Akun",
+    icon: <Settings className="h-4 w-4" />,
   },
 ];
 

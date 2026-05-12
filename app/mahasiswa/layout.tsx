@@ -9,6 +9,7 @@ import {
   Star,
   FilePen,
   Presentation,
+  Settings,
 } from "lucide-react";
 
 const navItems = [
@@ -46,6 +47,11 @@ const navItems = [
     href: "/mahasiswa/nilai",
     label: "Nilai Saya",
     icon: <Star className="h-4 w-4" />,
+  },
+  {
+    href: "/account/settings",
+    label: "Pengaturan Akun",
+    icon: <Settings className="h-4 w-4" />,
   },
 ];
 

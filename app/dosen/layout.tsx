@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Presentation,
   CalendarPlus,
+  Settings,
 } from "lucide-react";
 
 const koordinatorNavItems = [
@@ -48,6 +49,11 @@ const koordinatorNavItems = [
     label: "Rekap Nilai",
     icon: <BarChart3 className="h-4 w-4" />,
   },
+  {
+    href: "/account/settings",
+    label: "Pengaturan Akun",
+    icon: <Settings className="h-4 w-4" />,
+  },
 ];
 
 const pembimbingNavItems = [
@@ -80,6 +86,11 @@ const pembimbingNavItems = [
     href: "/pembimbing/seminar",
     label: "Jadwal Seminar",
     icon: <CalendarPlus className="h-4 w-4" />,
+  },
+  {
+    href: "/account/settings",
+    label: "Pengaturan Akun",
+    icon: <Settings className="h-4 w-4" />,
   },
 ];
 

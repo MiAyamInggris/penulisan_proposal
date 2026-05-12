@@ -57,14 +57,9 @@ export function RevisiUpload({ proposal }: { proposal: Proposal }) {
   };
 
   const de = proposal.deskEvaluation;
-  const rawTotal = de
-    ? de.latarBelakang +
-      de.formulasiMasalah +
-      de.teoriPendukung +
-      de.ideMetode
+  const finalScore = de
+    ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode
     : null;
-  const finalScore =
-    de?.isLate && rawTotal !== null ? Math.min(rawTotal, 51) : rawTotal;
 
   return (
     <div className="space-y-4">
@@ -100,11 +95,6 @@ export function RevisiUpload({ proposal }: { proposal: Proposal }) {
               <p className="text-sm text-gray-500">Nilai DE</p>
               <p className="text-2xl font-bold text-gray-900">
                 {finalScore?.toFixed(1)}
-                {de.isLate && (
-                  <span className="text-xs text-orange-500 ml-2">
-                    (dikap 51 – terlambat)
-                  </span>
-                )}
               </p>
             </div>
             {de.catatanReviewer && (

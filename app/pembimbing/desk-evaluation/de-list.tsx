@@ -48,10 +48,6 @@ function DEForm({ proposal, onClose }: { proposal: Proposal; onClose: () => void
   const [loading, setLoading] = useState(false);
 
   const rawTotal = Object.values(scores).reduce((a, b) => a + b, 0);
-  const isLate = proposal.enrollment.class.deDeadline
-    ? new Date() > new Date(proposal.enrollment.class.deDeadline)
-    : false;
-  const cappedTotal = isLate ? Math.min(rawTotal, 51) : rawTotal;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -67,11 +63,6 @@ function DEForm({ proposal, onClose }: { proposal: Proposal; onClose: () => void
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {isLate && (
-        <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
-          ⚠ Proposal dikumpulkan setelah deadline. Nilai akan dibatasi maksimal 51.
-        </div>
-      )}
       {CRITERIA.map((c) => (
         <div key={c.name} className="space-y-1">
           <div className="flex justify-between">
@@ -98,8 +89,8 @@ function DEForm({ proposal, onClose }: { proposal: Proposal; onClose: () => void
       ))}
       <div className="p-3 bg-gray-50 rounded-lg flex justify-between">
         <span className="text-sm font-medium text-gray-700">Total Nilai</span>
-        <span className={`text-lg font-bold ${isLate && rawTotal > 51 ? "text-red-600" : "text-gray-900"}`}>
-          {cappedTotal.toFixed(1)}{isLate && rawTotal > 51 ? ` (dibatasi dari ${rawTotal.toFixed(1)})` : ""}
+        <span className="text-lg font-bold text-gray-900">
+          {rawTotal.toFixed(1)}
         </span>
       </div>
       <div className="space-y-1">
@@ -130,10 +121,9 @@ export function DEList({ proposals }: { proposals: Proposal[] }) {
     <div className="space-y-3">
       {proposals.map((p) => {
         const de = p.deskEvaluation;
-        const rawTotal = de
+        const finalScore = de
           ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode
           : null;
-        const finalScore = de ? (de.isLate ? Math.min(rawTotal!, 51) : rawTotal!) : null;
 
         return (
           <Card key={p.id}>
@@ -145,9 +135,6 @@ export function DEList({ proposals }: { proposals: Proposal[] }) {
                     <span className="font-medium text-gray-900">{p.enrollment.student.name}</span>
                     <span className="text-xs text-gray-500">{p.enrollment.student.identifier}</span>
                     <StatusBadge status={p.status} type="proposal" />
-                    {de?.isLate && (
-                      <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded">Terlambat</span>
-                    )}
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-1">{p.titleId}</p>
                   {de && (
@@ -156,9 +143,6 @@ export function DEList({ proposals }: { proposals: Proposal[] }) {
                       <span className="font-bold text-gray-900">
                         {finalScore?.toFixed(1)}
                       </span>
-                      {de.isLate && rawTotal! > 51 && (
-                        <span className="text-xs text-red-500 ml-1">(raw: {rawTotal?.toFixed(1)})</span>
-                      )}
                     </p>
                   )}
                 </div>
