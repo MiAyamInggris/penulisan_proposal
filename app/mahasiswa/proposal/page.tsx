@@ -26,7 +26,7 @@ export default async function ProposalPage() {
   });
 
   const pembimbingList = await prisma.user.findMany({
-    where: { role: "DOSEN" },
+    where: { role: "DOSEN", isActive: true },
     orderBy: { name: "asc" },
     select: { id: true, name: true, identifier: true },
   });

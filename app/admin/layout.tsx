@@ -8,6 +8,7 @@ import {
   GraduationCap,
   School,
   Settings,
+  RefreshCw,
 } from "lucide-react";
 
 const navItems = [
@@ -35,6 +36,11 @@ const navItems = [
     href: "/admin/programs",
     label: "Program Studi",
     icon: <School className="h-4 w-4" />,
+  },
+  {
+    href: "/admin/dosen-sync",
+    label: "Sinkronisasi Dosen",
+    icon: <RefreshCw className="h-4 w-4" />,
   },
   {
     href: "/account/settings",

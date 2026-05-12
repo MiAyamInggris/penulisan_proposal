@@ -33,7 +33,7 @@ export default async function DeskEvaluationPage() {
   });
 
   const lecturers = await prisma.user.findMany({
-    where: { role: "DOSEN" },
+    where: { role: "DOSEN", isActive: true },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
