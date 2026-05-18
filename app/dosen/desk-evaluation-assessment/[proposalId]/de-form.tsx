@@ -23,6 +23,13 @@ export function DEForm({ proposal }: { proposal: any }) {
     catatanReviewer: de?.catatanReviewer || "",
   });
 
+  const CRITERIA = [
+    { key: "latarBelakang" as const, label: "Latar Belakang", sub: "Motivasi · Kemanfaatan/Dampak", max: 25 },
+    { key: "formulasiMasalah" as const, label: "Formulasi Masalah", sub: "Tujuan · Hipotesis · Batasan/Asumsi · Kelayakan Waktu & Sarana", max: 30 },
+    { key: "teoriPendukung" as const, label: "Teori Pendukung / Penelusuran Literatur", sub: "", max: 30 },
+    { key: "ideMetode" as const, label: "Ide/Metode Penyelesaian Masalah", sub: "", max: 15 },
+  ];
+
   const total = scores.latarBelakang + scores.formulasiMasalah + scores.teoriPendukung + scores.ideMetode;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,62 +54,30 @@ export function DEForm({ proposal }: { proposal: any }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Komponen Penilaian (0 - 25 per item)</CardTitle>
+          <CardTitle className="text-lg">Komponen Penilaian (Total Maks. 100)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="latarBelakang">Latar Belakang & Masalah (Max 25)</Label>
-              <Input
-                id="latarBelakang"
-                type="number"
-                min="0"
-                max="25"
-                step="0.5"
-                value={scores.latarBelakang}
-                onChange={(e) => setScores({ ...scores, latarBelakang: parseFloat(e.target.value) || 0 })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="formulasiMasalah">Perumusan Masalah & Tujuan (Max 25)</Label>
-              <Input
-                id="formulasiMasalah"
-                type="number"
-                min="0"
-                max="25"
-                step="0.5"
-                value={scores.formulasiMasalah}
-                onChange={(e) => setScores({ ...scores, formulasiMasalah: parseFloat(e.target.value) || 0 })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="teoriPendukung">Tinjauan Pustaka & Dasar Teori (Max 25)</Label>
-              <Input
-                id="teoriPendukung"
-                type="number"
-                min="0"
-                max="25"
-                step="0.5"
-                value={scores.teoriPendukung}
-                onChange={(e) => setScores({ ...scores, teoriPendukung: parseFloat(e.target.value) || 0 })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ideMetode">Metodologi & Rencana Kerja (Max 25)</Label>
-              <Input
-                id="ideMetode"
-                type="number"
-                min="0"
-                max="25"
-                step="0.5"
-                value={scores.ideMetode}
-                onChange={(e) => setScores({ ...scores, ideMetode: parseFloat(e.target.value) || 0 })}
-                required
-              />
-            </div>
+            {CRITERIA.map((c) => (
+              <div key={c.key} className="space-y-2">
+                <div>
+                  <Label htmlFor={c.key}>{c.label} <span className="text-gray-400 font-normal">(Maks. {c.max})</span></Label>
+                  {c.sub && <p className="text-xs text-gray-500 mt-0.5">{c.sub}</p>}
+                </div>
+                <Input
+                  id={c.key}
+                  type="number"
+                  min="0"
+                  max={c.max}
+                  step="0.5"
+                  value={scores[c.key]}
+                  onChange={(e) =>
+                    setScores({ ...scores, [c.key]: Math.min(c.max, Math.max(0, parseFloat(e.target.value) || 0)) })
+                  }
+                  required
+                />
+              </div>
+            ))}
           </div>
 
           <div className="pt-4 border-t">

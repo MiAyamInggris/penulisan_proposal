@@ -106,9 +106,9 @@ export default async function NilaiPage() {
                   <div className="flex justify-between">
                     <div className="space-y-1 text-sm text-gray-600">
                       <p>Latar Belakang: {proposal.deskEvaluation.latarBelakang}/25</p>
-                      <p>Formulasi Masalah: {proposal.deskEvaluation.formulasiMasalah}/25</p>
-                      <p>Teori Pendukung: {proposal.deskEvaluation.teoriPendukung}/25</p>
-                      <p>Ide & Metode: {proposal.deskEvaluation.ideMetode}/25</p>
+                      <p>Formulasi Masalah: {proposal.deskEvaluation.formulasiMasalah}/30</p>
+                      <p>Teori Pendukung: {proposal.deskEvaluation.teoriPendukung}/30</p>
+                      <p>Ide & Metode: {proposal.deskEvaluation.ideMetode}/15</p>
                     </div>
                     <div className="text-right">
                       <span className="text-2xl font-bold text-gray-900">
