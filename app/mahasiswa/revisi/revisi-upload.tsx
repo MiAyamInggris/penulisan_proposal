@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { FileUpload } from "@/components/shared/FileUpload";
 import { toast } from "sonner";
 import { uploadRevision } from "@/lib/actions/proposal";
+import { CheckCircle2 } from "lucide-react";
 
 type DeskEval = {
   latarBelakang: number;
@@ -29,15 +30,47 @@ type Proposal = {
 
 export function RevisiUpload({ proposal }: { proposal: Proposal }) {
   const router = useRouter();
-  const [revisionUrl, setRevisionUrl] = useState(proposal.revisionUrl ?? "");
-  const [presentationUrl, setPresentationUrl] = useState(
+
+  // Track URLs in local state — kept separate from the server-supplied
+  // initial values so that a revalidatePath-triggered re-render of the
+  // parent server component does NOT reset a file the user just uploaded.
+  const [revisionUrl, setRevisionUrl] = useState<string>(
+    proposal.revisionUrl ?? ""
+  );
+  const [presentationUrl, setPresentationUrl] = useState<string>(
     proposal.presentationUrl ?? ""
   );
+
+  // True when the file was uploaded in this browser session (not just
+  // carried over from DB).  Used for per-file success indicators.
+  const [revisionFresh, setRevisionFresh] = useState(false);
+  const [presentationFresh, setPresentationFresh] = useState(false);
+
   const [loading, setLoading] = useState(false);
 
   const canUpload = ["DE_COMPLETED", "REVISION_UPLOADED"].includes(
     proposal.status
   );
+
+  const handleRevisionUpload = (url: string) => {
+    console.info("[RevisiUpload] revisionUrl received:", url ? url.slice(0, 60) : "EMPTY");
+    if (!url) {
+      toast.error("File revisi tidak berhasil diunggah. Coba lagi.");
+      return;
+    }
+    setRevisionUrl(url);
+    setRevisionFresh(true);
+  };
+
+  const handlePresentationUpload = (url: string) => {
+    console.info("[RevisiUpload] presentationUrl received:", url ? url.slice(0, 60) : "EMPTY");
+    if (!url) {
+      toast.error("File presentasi tidak berhasil diunggah. Coba lagi.");
+      return;
+    }
+    setPresentationUrl(url);
+    setPresentationFresh(true);
+  };
 
   const handleSubmit = async () => {
     if (!revisionUrl || !presentationUrl) {
@@ -133,38 +166,62 @@ export function RevisiUpload({ proposal }: { proposal: Proposal }) {
             <CardTitle className="text-base">Upload Revisi</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Revision PDF */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">
-                File Proposal (PDF) *
-              </p>
-              {proposal.revisionUrl && (
-                <p className="text-xs text-green-600">
-                  Sudah diunggah sebelumnya
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700">
+                  File Proposal (PDF) *
                 </p>
-              )}
+                {revisionUrl && (
+                  <span className="flex items-center gap-1 text-xs text-green-600">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {revisionFresh ? "Terunggah" : "Sudah ada"}
+                  </span>
+                )}
+              </div>
               <FileUpload
                 folder="revision"
                 accept=".pdf"
                 label="Upload PDF Revisi"
-                onUpload={(url) => setRevisionUrl(url)}
+                onUpload={handleRevisionUpload}
               />
+              <p className="text-xs text-gray-400">Format: PDF. Maks 4MB.</p>
             </div>
+
+            {/* Presentation file */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">
-                File Presentasi (PPT/PDF) *
-              </p>
-              {proposal.presentationUrl && (
-                <p className="text-xs text-green-600">
-                  Sudah diunggah sebelumnya
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700">
+                  File Presentasi (PPT/PDF) *
                 </p>
-              )}
+                {presentationUrl && (
+                  <span className="flex items-center gap-1 text-xs text-green-600">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {presentationFresh ? "Terunggah" : "Sudah ada"}
+                  </span>
+                )}
+              </div>
               <FileUpload
                 folder="presentation"
                 accept=".ppt,.pptx,.pdf"
                 label="Upload File Presentasi"
-                onUpload={(url) => setPresentationUrl(url)}
+                onUpload={handlePresentationUpload}
               />
+              <p className="text-xs text-gray-400">
+                Format: PPT, PPTX, atau PDF. Maks 4MB.
+              </p>
             </div>
+
+            {/* Checklist of what's still needed */}
+            {(!revisionUrl || !presentationUrl) && (
+              <div className="text-xs text-amber-600 bg-amber-50 rounded p-2 space-y-0.5">
+                {!revisionUrl && <p>• File proposal (PDF) belum diunggah</p>}
+                {!presentationUrl && (
+                  <p>• File presentasi belum diunggah</p>
+                )}
+              </div>
+            )}
+
             <Button
               onClick={handleSubmit}
               disabled={loading || !revisionUrl || !presentationUrl}

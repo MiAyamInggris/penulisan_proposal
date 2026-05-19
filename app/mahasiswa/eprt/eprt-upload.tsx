@@ -26,6 +26,15 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
   const router = useRouter();
   const [eprtDate, setEprtDate] = useState("");
   const [screenshotUrl, setScreenshotUrl] = useState("");
+
+  const handleEprtUpload = (url: string) => {
+    console.info("[EprtUpload] screenshotUrl received:", url ? url.slice(0, 60) : "EMPTY");
+    if (!url) {
+      toast.error("File tidak berhasil diunggah. Coba lagi.");
+      return;
+    }
+    setScreenshotUrl(url);
+  };
   const [loading, setLoading] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
@@ -36,6 +45,7 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
       toast.error("Unggah file screenshot/PDF terlebih dahulu");
       return;
     }
+    console.info("[EprtUpload] submitting screenshotUrl:", screenshotUrl.slice(0, 60));
     setLoading(true);
     try {
       const result = await saveEprtRecord(eprtDate, screenshotUrl);
@@ -129,7 +139,7 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
               folder="eprt"
               accept="image/*,application/pdf"
               label="Upload File EpRT"
-              onUpload={(url) => setScreenshotUrl(url)}
+              onUpload={handleEprtUpload}
             />
             <p className="text-xs text-gray-500">Format: JPG, PNG, atau PDF. Maks 4MB.</p>
           </div>

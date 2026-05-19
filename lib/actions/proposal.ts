@@ -44,6 +44,10 @@ export async function registerProposal(formData: FormData) {
 }
 
 export async function uploadProposalPdf(proposalId: string, proposalUrl: string) {
+  const session = await auth();
+  if (!session) return { error: "Tidak terautentikasi" };
+  if (!proposalUrl) return { error: "URL file tidak valid" };
+
   await prisma.proposal.update({
     where: { id: proposalId },
     data: {
@@ -62,6 +66,27 @@ export async function uploadRevision(
   revisionUrl: string,
   presentationUrl: string
 ) {
+  const session = await auth();
+  if (!session) return { error: "Tidak terautentikasi" };
+
+  if (!revisionUrl || !presentationUrl)
+    return { error: "Kedua file harus diunggah" };
+
+  // Validate the proposal belongs to this student
+  const enrollment = await prisma.classEnrollment.findFirst({
+    where: { studentId: session.user.id, isActive: true },
+    select: { id: true },
+  });
+  if (!enrollment) return { error: "Tidak terdaftar di kelas manapun" };
+
+  const proposal = await prisma.proposal.findFirst({
+    where: { id: proposalId, enrollmentId: enrollment.id },
+    select: { status: true },
+  });
+  if (!proposal) return { error: "Proposal tidak ditemukan" };
+  if (!["DE_COMPLETED", "REVISION_UPLOADED"].includes(proposal.status))
+    return { error: "Status proposal belum memenuhi syarat" };
+
   await prisma.proposal.update({
     where: { id: proposalId },
     data: {
