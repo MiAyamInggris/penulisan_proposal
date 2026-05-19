@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/status-badge";
+import { FileUpload } from "@/components/shared/FileUpload";
 import { toast } from "sonner";
-import { uploadEprt } from "./actions";
+import { saveEprtRecord } from "./actions";
 import { Upload, CheckCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -22,14 +23,22 @@ type EprtRecord = {
 } | null;
 
 export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [eprtDate, setEprtDate] = useState("");
+  const [screenshotUrl, setScreenshotUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const today = new Date().toISOString().split("T")[0];
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!screenshotUrl) {
+      toast.error("Unggah file screenshot/PDF terlebih dahulu");
+      return;
+    }
     setLoading(true);
     try {
-      const result = await uploadEprt(new FormData(e.currentTarget));
+      const result = await saveEprtRecord(eprtDate, screenshotUrl);
       if ("error" in result) {
         toast.error(result.error);
       } else {
@@ -37,7 +46,7 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
         router.refresh();
       }
     } catch {
-      toast.error("Terjadi kesalahan saat mengupload EpRT. Coba lagi.");
+      toast.error("Terjadi kesalahan saat menyimpan EpRT. Coba lagi.");
     } finally {
       setLoading(false);
     }
@@ -73,14 +82,14 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Screenshot</p>
+            <p className="text-xs text-gray-500">File Screenshot</p>
             <a
               href={eprt.screenshotUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-blue-600 hover:underline"
             >
-              Lihat Screenshot EpRT
+              Lihat File EpRT
             </a>
           </div>
           {eprt.status === "PENDING" && (
@@ -107,29 +116,29 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
             <Label htmlFor="eprtDate">Tanggal EpRT *</Label>
             <Input
               id="eprtDate"
-              name="eprtDate"
               type="date"
               required
-              max={new Date().toISOString().split("T")[0]}
+              max={today}
+              value={eprtDate}
+              onChange={(e) => setEprtDate(e.target.value)}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="screenshot">Screenshot Nilai EpRT *</Label>
-            <Input
-              id="screenshot"
-              name="screenshot"
-              type="file"
+          <div className="space-y-2">
+            <Label>Screenshot / PDF Nilai EpRT *</Label>
+            <FileUpload
+              folder="eprt"
               accept="image/*,application/pdf"
-              required
+              label="Upload File EpRT"
+              onUpload={(url) => setScreenshotUrl(url)}
             />
             <p className="text-xs text-gray-500">Format: JPG, PNG, atau PDF. Maks 5MB.</p>
           </div>
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || !screenshotUrl || !eprtDate}
             className="bg-[#C8102E] hover:bg-[#a50d26]"
           >
-            {loading ? "Mengupload..." : "Upload EpRT"}
+            {loading ? "Menyimpan..." : "Simpan EpRT"}
           </Button>
         </form>
       </CardContent>

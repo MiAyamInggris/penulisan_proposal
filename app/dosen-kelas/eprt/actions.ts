@@ -26,11 +26,17 @@ export async function verifyEprt(eprtId: string) {
   }
 
   revalidatePath("/dosen-kelas/eprt");
+  revalidatePath("/dosen/kelas");
+  revalidatePath("/mahasiswa/eprt");
+  revalidatePath("/mahasiswa/dashboard");
   return { success: true };
 }
 
 export async function rejectEprt(eprtId: string) {
   await prisma.eprtRecord.delete({ where: { id: eprtId } });
   revalidatePath("/dosen-kelas/eprt");
+  revalidatePath("/dosen/kelas");
+  revalidatePath("/mahasiswa/eprt");
+  revalidatePath("/mahasiswa/dashboard");
   return { success: true };
 }

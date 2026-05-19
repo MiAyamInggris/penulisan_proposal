@@ -14,10 +14,9 @@ export default async function EprtVerifyPage() {
     })
   ).map((c) => c.id);
 
-  const pendingEprts = await prisma.eprtRecord.findMany({
+  const allEprts = await prisma.eprtRecord.findMany({
     where: {
-      status: "PENDING",
-      enrollment: { classId: { in: myClassIds } },
+      enrollment: { classId: { in: myClassIds }, isActive: true },
     },
     include: {
       enrollment: {
@@ -27,18 +26,23 @@ export default async function EprtVerifyPage() {
         },
       },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
+
+  const pending = allEprts.filter((e) => e.status === "PENDING");
+  const verified = allEprts.filter((e) => e.status === "VERIFIED");
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Verifikasi EpRT</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {pendingEprts.length} EpRT menunggu verifikasi
+          {pending.length > 0
+            ? `${pending.length} EpRT menunggu verifikasi`
+            : "Semua EpRT sudah diverifikasi"}
         </p>
       </div>
-      <EprtVerifyList eprts={pendingEprts} />
+      <EprtVerifyList pending={pending} verified={verified} />
     </div>
   );
 }
