@@ -33,12 +33,20 @@ export function FileUpload({
     setFailed(false);
     setFileName(file.name);
 
+    const controller = new AbortController();
+    // 30 s client-side timeout so the button never stays stuck forever
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("folder", folder);
 
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: fd,
+        signal: controller.signal,
+      });
       const data = await res.json();
 
       if (!res.ok || !data.url) {
@@ -50,10 +58,15 @@ export function FileUpload({
     } catch (err: any) {
       setFailed(true);
       setFileName(null);
-      toast.error(err.message || "Gagal mengupload file. Coba lagi.");
-      // Reset so user can retry the same file
+      const msg =
+        err?.name === "AbortError"
+          ? "Upload timeout — coba lagi atau gunakan file yang lebih kecil"
+          : err?.message || "Gagal mengupload file. Coba lagi.";
+      toast.error(msg);
+      // Reset input so the same file can be retried
       if (inputRef.current) inputRef.current.value = "";
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
