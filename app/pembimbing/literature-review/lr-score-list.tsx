@@ -163,7 +163,7 @@ export function LRScoreList({ proposals }: { proposals: Proposal[] }) {
       {proposals.map((p) => {
         const existing = p.nilaiLiteratureReview[0] ?? null;
         const total = existing
-          ? CRITERIA.map((c) => (existing as Record<string, number>)[c.name]).reduce((a, b) => a + b, 0)
+          ? CRITERIA.map((c) => (existing as unknown as Record<string, number>)[c.name]).reduce((a, b) => a + b, 0)
           : null;
 
         return (

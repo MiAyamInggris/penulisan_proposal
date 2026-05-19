@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Upload, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
+// Must stay in sync with MAX_SIZE_BYTES in app/api/upload/route.ts
+const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4 MB
+
 type Props = {
   folder?: string;
   accept?: string;
@@ -28,14 +31,30 @@ export function FileUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // ── Client-side pre-flight checks ──────────────────────────────────────
+    if (file.size === 0) {
+      toast.error("File kosong. Pilih file yang valid.");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      toast.error(
+        `File terlalu besar (${(file.size / 1024 / 1024).toFixed(1)} MB). ` +
+          `Maksimal ${MAX_FILE_BYTES / 1024 / 1024} MB.`
+      );
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
     setLoading(true);
     setUploaded(false);
     setFailed(false);
     setFileName(file.name);
 
+    // 45 s client-side abort — longer than maxDuration so the server error
+    // message (not an AbortError) reaches the client first in most cases.
     const controller = new AbortController();
-    // 30 s client-side timeout so the button never stays stuck forever
-    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+    const timeoutId = setTimeout(() => controller.abort(), 45_000);
 
     try {
       const fd = new FormData();
@@ -47,10 +66,25 @@ export function FileUpload({
         body: fd,
         signal: controller.signal,
       });
-      const data = await res.json();
+
+      let data: { url?: string; error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server mengembalikan respons tidak valid (HTTP ${res.status})`);
+      }
 
       if (!res.ok || !data.url) {
-        throw new Error(data.error || "Gagal mengupload file");
+        throw new Error(
+          data.error ||
+            (res.status === 401
+              ? "Sesi habis — silakan login ulang"
+              : res.status === 413
+              ? "File terlalu besar untuk diunggah"
+              : res.status === 503
+              ? "Layanan penyimpanan belum dikonfigurasi"
+              : `Upload gagal (HTTP ${res.status})`)
+        );
       }
 
       onUpload(data.url);
@@ -63,7 +97,6 @@ export function FileUpload({
           ? "Upload timeout — coba lagi atau gunakan file yang lebih kecil"
           : err?.message || "Gagal mengupload file. Coba lagi.";
       toast.error(msg);
-      // Reset input so the same file can be retried
       if (inputRef.current) inputRef.current.value = "";
     } finally {
       clearTimeout(timeoutId);
@@ -72,7 +105,7 @@ export function FileUpload({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       <input
         ref={inputRef}
         type="file"
@@ -112,7 +145,7 @@ export function FileUpload({
           : label}
       </Button>
       {fileName && !loading && !failed && (
-        <span className="text-xs text-gray-500 truncate max-w-[200px]">
+        <span className="text-xs text-gray-500 truncate max-w-[200px]" title={fileName}>
           {fileName}
         </span>
       )}

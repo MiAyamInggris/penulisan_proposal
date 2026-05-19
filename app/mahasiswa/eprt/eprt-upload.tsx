@@ -131,7 +131,7 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
               label="Upload File EpRT"
               onUpload={(url) => setScreenshotUrl(url)}
             />
-            <p className="text-xs text-gray-500">Format: JPG, PNG, atau PDF. Maks 5MB.</p>
+            <p className="text-xs text-gray-500">Format: JPG, PNG, atau PDF. Maks 4MB.</p>
           </div>
           <Button
             type="submit"
