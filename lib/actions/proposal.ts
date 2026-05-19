@@ -72,6 +72,7 @@ export async function uploadRevision(
     },
   });
   revalidatePath("/mahasiswa/revisi");
+  revalidatePath("/mahasiswa/seminar");
   revalidatePath("/mahasiswa/dashboard");
   return { success: true };
 }

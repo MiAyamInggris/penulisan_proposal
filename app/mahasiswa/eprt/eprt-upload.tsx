@@ -36,6 +36,8 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
         toast.success("EpRT berhasil diupload! Menunggu verifikasi dari Dosen Kelas.");
         router.refresh();
       }
+    } catch {
+      toast.error("Terjadi kesalahan saat mengupload EpRT. Coba lagi.");
     } finally {
       setLoading(false);
     }

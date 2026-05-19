@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
@@ -27,6 +28,7 @@ type Proposal = {
 };
 
 export function RevisiUpload({ proposal }: { proposal: Proposal }) {
+  const router = useRouter();
   const [revisionUrl, setRevisionUrl] = useState(proposal.revisionUrl ?? "");
   const [presentationUrl, setPresentationUrl] = useState(
     proposal.presentationUrl ?? ""
@@ -49,8 +51,14 @@ export function RevisiUpload({ proposal }: { proposal: Proposal }) {
         revisionUrl,
         presentationUrl
       );
-      if ("error" in result) toast.error(String(result.error));
-      else toast.success("Revisi berhasil diunggah!");
+      if ("error" in result) {
+        toast.error(String(result.error));
+      } else {
+        toast.success("Revisi berhasil diunggah!");
+        router.refresh();
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat menyimpan revisi. Coba lagi.");
     } finally {
       setLoading(false);
     }
