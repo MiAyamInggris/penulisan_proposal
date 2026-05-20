@@ -33,10 +33,10 @@ export default async function NilaiRekapPage() {
       proposal: {
         include: {
           finalGrade: true,
-          deskEvaluation: true,
-          nilaiBimbingan: true,
-          nilaiLiteratureReview: true,
-          seminar: { include: { nilaiPresentasi: true } },
+          deskEvaluation: { include: { evaluator: { select: { name: true } } } },
+          nilaiBimbingan: { include: { pembimbing: { select: { name: true } } } },
+          nilaiLiteratureReview: { include: { pembimbing: { select: { name: true } } } },
+          seminar: { include: { nilaiPresentasi: { include: { pembimbing: { select: { name: true } } } } } },
         },
       },
     },
@@ -111,6 +111,48 @@ export default async function NilaiRekapPage() {
       gradeIndex,
       passed,
       isLate: de?.isLate ?? false,
+      detail: {
+        nilaiBimbingan: (p?.nilaiBimbingan ?? []).map((n) => ({
+          pembimbingName: n.pembimbing.name,
+          pemilihanTema: n.pemilihanTema,
+          researchQuestion: n.researchQuestion,
+          studiLiteratur1: n.studiLiteratur1,
+          studiLiteratur2: n.studiLiteratur2,
+          rencanaImplementasi: n.rencanaImplementasi,
+          kemandirian: n.kemandirian,
+          prosesBimbingan: n.prosesBimbingan,
+          notes: n.notes ?? null,
+        })),
+        nilaiLiteratureReview: (p?.nilaiLiteratureReview ?? []).map((n) => ({
+          pembimbingName: n.pembimbing.name,
+          kualitasPustaka: n.kualitasPustaka,
+          kontenRumusan: n.kontenRumusan,
+          analisisTujuan: n.analisisTujuan,
+          kelengkapanKajian: n.kelengkapanKajian,
+          kelebihanKekurangan: n.kelebihanKekurangan,
+          relasiTeori: n.relasiTeori,
+          catatan: n.catatan ?? null,
+        })),
+        deskEvaluation: de
+          ? {
+              evaluatorName: de.evaluator.name,
+              latarBelakang: de.latarBelakang,
+              formulasiMasalah: de.formulasiMasalah,
+              teoriPendukung: de.teoriPendukung,
+              ideMetode: de.ideMetode,
+              catatanReviewer: de.catatanReviewer ?? null,
+              isLate: de.isLate,
+            }
+          : null,
+        nilaiPresentasi: (p?.seminar?.nilaiPresentasi ?? []).map((n) => ({
+          pembimbingName: n.pembimbing.name,
+          latarBelakangScore: n.latarBelakangScore,
+          teoriPendukungScore: n.teoriPendukungScore,
+          toolsPemodelanScore: n.toolsPemodelanScore,
+          pemaparanScore: n.pemaparanScore,
+          komunikasiScore: n.komunikasiScore,
+        })),
+      },
     };
   });
 
