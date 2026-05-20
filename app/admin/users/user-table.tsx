@@ -17,7 +17,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createUser, updateUser, toggleUserActive } from "./actions";
-import { Plus, Pencil, PowerOff, Power } from "lucide-react";
+import { ImportMahasiswaDialog } from "./import-dialog";
+import { Plus, Pencil, PowerOff, Power, Upload } from "lucide-react";
 import { Role } from "@prisma/client";
 
 type UserRow = {
@@ -115,6 +116,7 @@ function UserFormDialog({ user, onClose }: { user?: UserRow; onClose: () => void
 
 export function UserTable({ users }: { users: UserRow[] }) {
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserRow | undefined>();
   const [activeTab, setActiveTab] = useState<string>("ALL");
 
@@ -208,10 +210,17 @@ export function UserTable({ users }: { users: UserRow[] }) {
             </button>
           ))}
         </div>
-        <Button className="bg-[#C8102E] hover:bg-[#a50d26]" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Tambah Pengguna
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import Mahasiswa
+          </Button>
+          <Button className="bg-[#C8102E] hover:bg-[#a50d26]" onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Tambah Pengguna
+          </Button>
+        </div>
+        <ImportMahasiswaDialog open={importOpen} onClose={() => setImportOpen(false)} />
         <Dialog open={open} onOpenChange={(v) => { if (!v) closeDialog(); }}>
           <DialogContent>
             <DialogHeader>
