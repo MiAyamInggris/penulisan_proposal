@@ -65,6 +65,13 @@ export type AssessmentDetail = {
   nilaiPresentasi: PresentasiDetail[];
 };
 
+type ProgramWeights = {
+  bimbinganPct: number;
+  lrPct: number;
+  dePct: number;
+  presentasiPct: number;
+};
+
 export type RekapRow = {
   id: string;
   nim: string;
@@ -80,22 +87,36 @@ export type RekapRow = {
   gradeIndex: string | null;
   passed: boolean | null;
   isLate: boolean;
+  weights: ProgramWeights | null;
   detail: AssessmentDetail;
 };
 
 // ─── Excel export ─────────────────────────────────────────────────────────────
+function weightedContrib(score: number | null, pct: number): string {
+  if (score === null) return "–";
+  return `${score.toFixed(1)} × ${pct}% = ${((score * pct) / 100).toFixed(2)}`;
+}
+
 function exportToExcel(rows: RekapRow[]) {
   const data = rows.map((r) => ({
     Kelas: r.kelas,
     NIM: r.nim,
     Nama: r.name,
     Prodi: r.prodi,
-    Status: r.status,
+    Status: STATUS_LABELS[r.status] ?? r.status,
     "Nilai LR": r.lrScore !== null ? r.lrScore.toFixed(1) : "–",
     "Nilai Bimbingan": r.bimbinganScore !== null ? r.bimbinganScore.toFixed(1) : "–",
     "Nilai DE": r.deScore !== null ? r.deScore.toFixed(1) : "–",
     "Terlambat DE": r.isLate ? "Ya" : "Tidak",
     "Nilai Presentasi": r.presentasiScore !== null ? r.presentasiScore.toFixed(1) : "–",
+    ...(r.weights
+      ? {
+          [`Kontribusi LR (${r.weights.lrPct}%)`]: weightedContrib(r.lrScore, r.weights.lrPct),
+          [`Kontribusi Bimbingan (${r.weights.bimbinganPct}%)`]: weightedContrib(r.bimbinganScore, r.weights.bimbinganPct),
+          [`Kontribusi DE (${r.weights.dePct}%)`]: weightedContrib(r.deScore, r.weights.dePct),
+          [`Kontribusi Presentasi (${r.weights.presentasiPct}%)`]: weightedContrib(r.presentasiScore, r.weights.presentasiPct),
+        }
+      : {}),
     "Nilai Akhir": r.weightedTotal !== null ? r.weightedTotal.toFixed(2) : "–",
     "Huruf": r.gradeIndex ?? "–",
     "Status Kelulusan": r.passed === null ? "–" : r.passed ? "LULUS" : "TIDAK LULUS",
@@ -301,19 +322,53 @@ function DetailModalContent({ row }: { row: RekapRow }) {
         </div>
       )}
 
-      {/* Final grade summary */}
-      {row.weightedTotal !== null && (
-        <div className="border-t pt-4">
-          <div className="flex items-center justify-between bg-gray-900 text-white rounded-lg px-4 py-3">
-            <div>
-              <p className="text-xs text-gray-400">Nilai Akhir</p>
-              <p className="text-2xl font-bold tabular-nums">{row.weightedTotal.toFixed(2)}</p>
-              <p className={`text-xs font-semibold mt-0.5 ${row.passed ? "text-green-400" : "text-red-400"}`}>
-                {row.passed ? "LULUS" : "TIDAK LULUS"}
+      {/* Weighted calculation breakdown */}
+      {(row.weights || row.weightedTotal !== null) && (
+        <div className="border-t pt-4 space-y-3">
+          {row.weights && (
+            <>
+              <p className="text-xs font-bold uppercase text-gray-400 tracking-wider">
+                Perhitungan Nilai Akhir
               </p>
+              <div className="rounded-lg border divide-y overflow-hidden">
+                {[
+                  { label: "Nilai Bimbingan", score: row.bimbinganScore, pct: row.weights.bimbinganPct },
+                  { label: "Literature Review", score: row.lrScore, pct: row.weights.lrPct },
+                  { label: "Desk Evaluation", score: row.deScore, pct: row.weights.dePct },
+                  { label: "Nilai Presentasi", score: row.presentasiScore, pct: row.weights.presentasiPct },
+                ].map(({ label, score, pct }) => (
+                  <div key={label} className="flex items-center gap-3 px-4 py-2.5 bg-white min-w-0">
+                    <span className="flex-1 min-w-0 text-sm text-gray-700">{label}</span>
+                    <span className="shrink-0 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">
+                      {pct}%
+                    </span>
+                    {score !== null ? (
+                      <div className="shrink-0 text-right text-sm tabular-nums">
+                        <span className="text-gray-500">{score.toFixed(1)} ×</span>
+                        <span className="ml-1 font-semibold text-gray-900">
+                          = {((score * pct) / 100).toFixed(2)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 shrink-0">Belum ada nilai</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {row.weightedTotal !== null && (
+            <div className="flex items-center justify-between bg-gray-900 text-white rounded-lg px-4 py-3">
+              <div>
+                <p className="text-xs text-gray-400">Nilai Akhir</p>
+                <p className="text-2xl font-bold tabular-nums">{row.weightedTotal.toFixed(2)}</p>
+                <p className={`text-xs font-semibold mt-0.5 ${row.passed ? "text-green-400" : "text-red-400"}`}>
+                  {row.passed ? "LULUS" : "TIDAK LULUS"}
+                </p>
+              </div>
+              <p className="text-5xl font-bold text-white/90">{row.gradeIndex}</p>
             </div>
-            <p className="text-5xl font-bold text-white/90">{row.gradeIndex}</p>
-          </div>
+          )}
         </div>
       )}
     </div>

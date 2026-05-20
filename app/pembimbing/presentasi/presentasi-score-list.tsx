@@ -89,11 +89,11 @@ function PresentasiForm({ proposalId, seminarId, existing, onClose }: {
             {g.criteria.map((c) => (
               <div
                 key={c.name}
-                className="flex items-center gap-4 px-4 py-3 bg-white hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-4 px-4 py-3 bg-white hover:bg-gray-50 transition-colors min-w-0"
               >
                 <Label
                   htmlFor={c.name}
-                  className="flex-1 text-sm font-normal text-gray-800 cursor-pointer leading-snug"
+                  className="flex-1 min-w-0 text-sm font-normal text-gray-800 cursor-pointer leading-snug"
                 >
                   {c.label}
                 </Label>

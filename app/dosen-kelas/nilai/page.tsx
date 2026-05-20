@@ -111,6 +111,14 @@ export default async function NilaiRekapPage() {
       gradeIndex,
       passed,
       isLate: de?.isLate ?? false,
+      weights: program
+        ? {
+            bimbinganPct: program.bimbinganPct,
+            lrPct: program.literatureReviewPct,
+            dePct: program.deskEvaluationPct,
+            presentasiPct: program.presentasiPct,
+          }
+        : null,
       detail: {
         nilaiBimbingan: (p?.nilaiBimbingan ?? []).map((n) => ({
           pembimbingName: n.pembimbing.name,
