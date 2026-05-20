@@ -732,6 +732,46 @@ function PenilaianTab({ proposal }: { proposal: Proposal }) {
 
   return (
     <div className="space-y-4">
+      {/* Desk Evaluation result — visible to Pembimbing after DE is submitted */}
+      {proposal.deskEvaluation && (
+        <Card className="border-blue-200 bg-blue-50/40">
+          <CardContent className="pt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-700">Hasil Desk Evaluation</p>
+              <div className="flex items-center gap-2">
+                {proposal.deskEvaluation.isLate && (
+                  <span className="text-xs text-red-500">Terlambat</span>
+                )}
+                <span className="text-sm font-bold tabular-nums">
+                  {Math.min(
+                    proposal.deskEvaluation.latarBelakang +
+                      proposal.deskEvaluation.formulasiMasalah +
+                      proposal.deskEvaluation.teoriPendukung +
+                      proposal.deskEvaluation.ideMetode,
+                    proposal.deskEvaluation.isLate ? 51 : Infinity,
+                  ).toFixed(1)}{" "}
+                  / 100
+                </span>
+              </div>
+            </div>
+            {proposal.deskEvaluation.catatanReviewer ? (
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">
+                  Catatan Desk Evaluator
+                </p>
+                <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">
+                  {proposal.deskEvaluation.catatanReviewer}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 italic">
+                Tidak ada catatan dari Desk Evaluator.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex gap-2 flex-wrap">
         {(["bimbingan", "lr", "presentasi"] as const).map((key) => (
           <button
