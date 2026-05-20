@@ -11,6 +11,7 @@ import { UserCheck, Download } from "lucide-react";
 type Proposal = {
   id: string;
   titleId: string;
+  abstract: string | null;
   proposalUrl: string | null;
   enrollment: {
     student: { name: string; identifier: string };
@@ -83,6 +84,11 @@ export function SupervisorAssignList({
                 )}
               </div>
               <p className="text-sm text-gray-600 mt-1 line-clamp-1">{p.titleId}</p>
+              {p.abstract && (
+                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">
+                  {p.abstract}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">

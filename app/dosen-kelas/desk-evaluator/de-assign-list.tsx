@@ -19,6 +19,7 @@ import { fileDownloadUrl } from "@/lib/file-url";
 type Proposal = {
   id: string;
   titleId: string;
+  abstract: string | null;
   proposalUrl: string | null;
   enrollment: {
     student: { name: string; identifier: string };
@@ -137,6 +138,11 @@ export function DEAssignList({
                 <p className="text-sm text-gray-600 mt-1 line-clamp-1">
                   {p.titleId}
                 </p>
+                {p.abstract && (
+                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">
+                    {p.abstract}
+                  </p>
+                )}
               </div>
 
               {/* Supervisor info */}

@@ -62,10 +62,16 @@ export default async function DEFormPage({
               <p className="text-gray-500">Kelas</p>
               <p className="font-medium">{proposal.enrollment.class.code}</p>
             </div>
+            {proposal.topicArea && (
+              <div>
+                <p className="text-gray-500">Bidang Topik</p>
+                <p className="font-medium">{proposal.topicArea}</p>
+              </div>
+            )}
             {proposal.proposalUrl && (
               <div className="md:col-span-2">
                 <p className="text-gray-500 mb-1">File Proposal</p>
-                <a 
+                <a
                   href={fileDownloadUrl(proposal.proposalUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -73,6 +79,14 @@ export default async function DEFormPage({
                 >
                   Lihat Proposal (External Link)
                 </a>
+              </div>
+            )}
+            {proposal.abstract && (
+              <div className="md:col-span-2">
+                <p className="text-gray-500 mb-1">Abstrak</p>
+                <p className="text-gray-800 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded p-3 text-sm">
+                  {proposal.abstract}
+                </p>
               </div>
             )}
           </div>

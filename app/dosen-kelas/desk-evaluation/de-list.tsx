@@ -12,6 +12,7 @@ import { toast } from "sonner";
 type Proposal = {
   id: string;
   titleId: string;
+  abstract: string | null;
   status: string;
   enrollment: {
     student: { name: string; identifier: string };
@@ -82,6 +83,11 @@ export function DEList({
                     <StatusBadge status={p.status} type="proposal" />
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-1">{p.titleId}</p>
+                  {p.abstract && (
+                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">
+                      {p.abstract}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {de && (
                       <p className="text-sm">
