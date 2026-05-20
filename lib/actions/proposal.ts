@@ -61,6 +61,15 @@ export async function uploadProposalPdf(proposalId: string, proposalUrl: string)
   return { success: true };
 }
 
+function isValidUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export async function uploadRevision(
   proposalId: string,
   revisionUrl: string,
@@ -70,7 +79,11 @@ export async function uploadRevision(
   if (!session) return { error: "Tidak terautentikasi" };
 
   if (!revisionUrl || !presentationUrl)
-    return { error: "Kedua file harus diunggah" };
+    return { error: "Kedua link harus diisi" };
+  if (!isValidUrl(revisionUrl))
+    return { error: "Format link file proposal tidak valid" };
+  if (!isValidUrl(presentationUrl))
+    return { error: "Format link file presentasi tidak valid" };
 
   // Validate the proposal belongs to this student
   const enrollment = await prisma.classEnrollment.findFirst({

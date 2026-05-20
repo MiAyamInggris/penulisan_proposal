@@ -2,18 +2,15 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { uploadFile } from "@/lib/storage";
 import { revalidatePath } from "next/cache";
 
-const MAX_PDF_BYTES = 5 * 1024 * 1024; // 5 MB
-
-async function uploadPdf(file: File, path: string): Promise<string> {
-  if (file.type !== "application/pdf")
-    throw new Error("Hanya file PDF yang diperbolehkan");
-  if (file.size > MAX_PDF_BYTES)
-    throw new Error("Ukuran file maksimal 5 MB");
-
-  return uploadFile(file, path);
+function isValidUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export async function registerProposal(formData: FormData) {
@@ -58,9 +55,12 @@ export async function registerProposal(formData: FormData) {
   return { success: true };
 }
 
-export async function uploadProposalFile(formData: FormData) {
+export async function saveProposalLink(proposalUrl: string) {
   const session = await auth();
   if (!session) return { error: "Tidak terautentikasi" };
+  if (!proposalUrl) return { error: "Link proposal wajib diisi" };
+  if (!isValidUrl(proposalUrl))
+    return { error: "Format link tidak valid. Gunakan URL yang dimulai dengan https://" };
 
   const enrollment = await prisma.classEnrollment.findFirst({
     where: { studentId: session.user.id, isActive: true },
@@ -69,18 +69,9 @@ export async function uploadProposalFile(formData: FormData) {
 
   if (!enrollment?.proposal) return { error: "Proposal belum terdaftar" };
 
-  const file = formData.get("proposalFile") as File | null;
-  if (!file || file.size === 0) return { error: "Pilih file PDF terlebih dahulu" };
-
-  let proposalUrl: string;
-  try {
-    proposalUrl = await uploadPdf(
-      file,
-      `proposals/${enrollment.id}-${Date.now()}.pdf`
-    );
-  } catch (e: unknown) {
-    return { error: e instanceof Error ? e.message : "Gagal mengupload file" };
-  }
+  const allowed = ["PROPOSAL_UPLOADED", "ASSIGNED", "BIMBINGAN"];
+  if (!allowed.includes(enrollment.proposal.status))
+    return { error: "Status proposal tidak mengizinkan perubahan link" };
 
   await prisma.proposal.update({
     where: { id: enrollment.proposal.id },
@@ -115,21 +106,6 @@ export async function submitForDE() {
     data: { status: "DE_READY" },
   });
 
-  revalidatePath("/mahasiswa/proposal");
-  revalidatePath("/mahasiswa/dashboard");
-  return { success: true };
-}
-
-export async function uploadRevision(proposalId: string, revisionUrl: string, presentationUrl: string) {
-  await prisma.proposal.update({
-    where: { id: proposalId },
-    data: {
-      revisionUrl,
-      presentationUrl,
-      revisionUploadedAt: new Date(),
-      status: "REVISION_UPLOADED",
-    },
-  });
   revalidatePath("/mahasiswa/proposal");
   revalidatePath("/mahasiswa/dashboard");
   return { success: true };

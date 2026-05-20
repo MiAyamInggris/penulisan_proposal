@@ -5,7 +5,6 @@ import { DEForm } from "./de-form";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { fileDownloadUrl } from "@/lib/file-url";
 
 export default async function DEFormPage({
   params,
@@ -70,14 +69,14 @@ export default async function DEFormPage({
             )}
             {proposal.proposalUrl && (
               <div className="md:col-span-2">
-                <p className="text-gray-500 mb-1">File Proposal</p>
+                <p className="text-gray-500 mb-1">Link Proposal</p>
                 <a
-                  href={fileDownloadUrl(proposal.proposalUrl)}
+                  href={proposal.proposalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline font-medium flex items-center gap-2"
                 >
-                  Lihat Proposal (External Link)
+                  Buka Link Proposal
                 </a>
               </div>
             )}

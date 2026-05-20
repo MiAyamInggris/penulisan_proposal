@@ -9,7 +9,14 @@
  */
 export function fileDownloadUrl(storedUrl: string | null | undefined): string {
   if (!storedUrl) return "";
-  // Local dev paths can't be proxied — return as-is (they won't resolve in prod)
   if (storedUrl.startsWith("/local-uploads/")) return storedUrl;
+  // External public links (Google Drive, OneDrive, etc.) — open directly, no proxy needed
+  if (
+    (storedUrl.startsWith("http://") || storedUrl.startsWith("https://")) &&
+    !storedUrl.includes(".vercel-storage.com") &&
+    !storedUrl.includes(".supabase.co")
+  ) {
+    return storedUrl;
+  }
   return `/api/download?url=${encodeURIComponent(storedUrl)}`;
 }

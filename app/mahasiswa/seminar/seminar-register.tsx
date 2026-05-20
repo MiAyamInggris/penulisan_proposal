@@ -94,8 +94,8 @@ export function SeminarRegister({ enrollment }: { enrollment: Enrollment }) {
             label={`Minimal 3 sesi bimbingan (${bimbinganCount}/3)`}
           />
           <Req met={eprtVerified} label="EpRT terverifikasi" />
-          <Req met={hasRevision} label="File revisi proposal diunggah" />
-          <Req met={hasPresentation} label="File presentasi diunggah" />
+          <Req met={hasRevision} label="Link revisi proposal disimpan" />
+          <Req met={hasPresentation} label="Link file presentasi disimpan" />
           <Req
             met={statusOk}
             label="Status proposal: Revisi Diunggah"

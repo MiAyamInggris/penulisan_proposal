@@ -8,10 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/status-badge";
 import { toast } from "sonner";
-import { submitForDE, uploadProposalFile } from "./actions";
+import { submitForDE, saveProposalLink } from "./actions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Download, Upload } from "lucide-react";
-import { fileDownloadUrl } from "@/lib/file-url";
+import { ExternalLink, Link2 } from "lucide-react";
+
+function isValidUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 type Proposal = {
   id: string;
@@ -30,7 +38,7 @@ type Proposal = {
 
 type EprtRecord = { status: string } | null;
 
-const UPLOAD_ALLOWED_STATUSES = new Set([
+const LINK_ALLOWED_STATUSES = new Set([
   "PROPOSAL_UPLOADED",
   "ASSIGNED",
   "BIMBINGAN",
@@ -39,8 +47,9 @@ const UPLOAD_ALLOWED_STATUSES = new Set([
 export function ProposalDetail({ proposal, eprt }: { proposal: Proposal; eprt: EprtRecord }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [uploadLoading, setUploadLoading] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [proposalLink, setProposalLink] = useState(proposal.proposalUrl ?? "");
 
   const bimbinganCount = proposal.bimbinganSessions.length;
   const canSubmitDE =
@@ -48,7 +57,8 @@ export function ProposalDetail({ proposal, eprt }: { proposal: Proposal; eprt: E
     bimbinganCount >= 3 &&
     eprt?.status === "VERIFIED";
 
-  const canUploadFile = UPLOAD_ALLOWED_STATUSES.has(proposal.status);
+  const canSaveLink = LINK_ALLOWED_STATUSES.has(proposal.status);
+  const linkValid = isValidUrl(proposalLink);
 
   const handleSubmitDE = async () => {
     setLoading(true);
@@ -66,34 +76,23 @@ export function ProposalDetail({ proposal, eprt }: { proposal: Proposal; eprt: E
     }
   };
 
-  const handleUploadFile = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveLink = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const file = (form.querySelector('[name="proposalFile"]') as HTMLInputElement)?.files?.[0];
-    if (!file || file.size === 0) {
-      toast.error("Pilih file PDF terlebih dahulu");
+    if (!proposalLink || !linkValid) {
+      toast.error("Masukkan link proposal yang valid");
       return;
     }
-    if (file.type !== "application/pdf") {
-      toast.error("Hanya file PDF yang diperbolehkan");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Ukuran file maksimal 5 MB");
-      return;
-    }
-    setUploadLoading(true);
+    setLinkLoading(true);
     try {
-      const formData = new FormData(form);
-      const result = await uploadProposalFile(formData);
+      const result = await saveProposalLink(proposalLink);
       if ("error" in result) {
         toast.error(String(result.error));
       } else {
-        toast.success("File proposal berhasil diupload!");
+        toast.success("Link proposal berhasil disimpan!");
         router.refresh();
       }
     } finally {
-      setUploadLoading(false);
+      setLinkLoading(false);
     }
   };
 
@@ -152,53 +151,57 @@ export function ProposalDetail({ proposal, eprt }: { proposal: Proposal; eprt: E
             </div>
           </div>
 
-          {/* Proposal file */}
+          {/* Proposal link display */}
           <div className="pt-2 border-t">
-            <p className="text-xs text-gray-500 mb-2">File Proposal</p>
+            <p className="text-xs text-gray-500 mb-2">Link Proposal</p>
             {proposal.proposalUrl ? (
               <a
-                href={fileDownloadUrl(proposal.proposalUrl)}
+                href={proposal.proposalUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline font-medium"
               >
-                <Download className="h-4 w-4" />
-                Unduh Proposal PDF
+                <ExternalLink className="h-4 w-4" />
+                Buka Link Proposal
               </a>
             ) : (
-              <p className="text-sm text-gray-400 italic">Belum ada file diunggah</p>
+              <p className="text-sm text-gray-400 italic">Belum ada link yang disimpan</p>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* File upload / re-upload */}
-      {canUploadFile && (
+      {/* Link input / update */}
+      {canSaveLink && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Upload className="h-4 w-4" />
-              {proposal.proposalUrl ? "Ganti File Proposal" : "Upload File Proposal"}
+              <Link2 className="h-4 w-4" />
+              {proposal.proposalUrl ? "Perbarui Link Proposal" : "Simpan Link Proposal"}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleUploadFile} className="space-y-3">
+            <form onSubmit={handleSaveLink} className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="proposalFileUpload">File PDF (maks. 5 MB)</Label>
+                <Label htmlFor="proposalLink">Link Proposal</Label>
                 <Input
-                  id="proposalFileUpload"
-                  name="proposalFile"
-                  type="file"
-                  accept="application/pdf"
+                  id="proposalLink"
+                  type="url"
+                  placeholder="https://drive.google.com/file/..."
+                  value={proposalLink}
+                  onChange={(e) => setProposalLink(e.target.value)}
                   required
                 />
+                <p className="text-xs text-gray-500">
+                  Google Drive, OneDrive, atau platform lain. Pastikan link dapat diakses siapapun yang memiliki link.
+                </p>
               </div>
               <Button
                 type="submit"
-                disabled={uploadLoading}
+                disabled={linkLoading || !linkValid}
                 className="bg-[#C8102E] hover:bg-[#a50d26]"
               >
-                {uploadLoading ? "Mengupload..." : "Upload"}
+                {linkLoading ? "Menyimpan..." : "Simpan Link"}
               </Button>
             </form>
           </CardContent>
@@ -222,7 +225,7 @@ export function ProposalDetail({ proposal, eprt }: { proposal: Proposal; eprt: E
                     {eprt?.status === "VERIFIED" ? "✓" : "✗"}
                   </span>
                   <span className="text-gray-600">
-                    EpRT: {eprt ? (eprt.status === "VERIFIED" ? "Terverifikasi" : "Menunggu Verifikasi") : "Belum diupload"}
+                    EpRT: {eprt ? (eprt.status === "VERIFIED" ? "Terverifikasi" : "Menunggu Verifikasi") : "Belum disubmit"}
                   </span>
                 </div>
               </div>

@@ -266,11 +266,11 @@ function InfoTab({
         </CardContent>
       </Card>
 
-      {/* File downloads */}
+      {/* File links */}
       {(proposal.proposalUrl || proposal.revisionUrl || proposal.presentationUrl) && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">File</CardTitle>
+            <CardTitle className="text-base">Link File</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {proposal.proposalUrl && (
@@ -281,7 +281,7 @@ function InfoTab({
                 className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
               >
                 <Download className="h-4 w-4" />
-                Proposal PDF
+                Link Proposal
               </a>
             )}
             {proposal.revisionUrl && (
@@ -292,7 +292,7 @@ function InfoTab({
                 className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
               >
                 <Download className="h-4 w-4" />
-                Revisi PDF
+                Link Revisi
               </a>
             )}
             {proposal.presentationUrl && (
@@ -303,7 +303,7 @@ function InfoTab({
                 className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
               >
                 <Download className="h-4 w-4" />
-                File Presentasi
+                Link Presentasi
               </a>
             )}
           </CardContent>
