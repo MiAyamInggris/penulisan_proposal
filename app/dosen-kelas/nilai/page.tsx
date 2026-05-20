@@ -8,50 +8,118 @@ export default async function NilaiRekapPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  const myClassIds = (
-    await prisma.class.findMany({
-      where: { dosenKelasId: session.user.id },
-      select: { id: true },
-    })
-  ).map((c) => c.id);
+  const myClasses = await prisma.class.findMany({
+    where: { dosenKelasId: session.user.id },
+    select: {
+      id: true,
+      program: {
+        select: {
+          literatureReviewPct: true,
+          bimbinganPct: true,
+          deskEvaluationPct: true,
+          presentasiPct: true,
+        },
+      },
+    },
+  });
+  const myClassIds = myClasses.map((c) => c.id);
+  const programByClassId = Object.fromEntries(myClasses.map((c) => [c.id, c.program]));
 
   const enrollments = await prisma.classEnrollment.findMany({
     where: { classId: { in: myClassIds }, isActive: true },
     include: {
       student: { select: { name: true, identifier: true } },
-      class: { select: { code: true, program: { select: { code: true } } } },
+      class: { select: { id: true, code: true, program: { select: { code: true } } } },
       proposal: {
         include: {
           finalGrade: true,
-          deskEvaluation: { select: { isLate: true } },
+          deskEvaluation: true,
+          nilaiBimbingan: true,
+          nilaiLiteratureReview: true,
+          seminar: { include: { nilaiPresentasi: true } },
         },
       },
     },
     orderBy: [{ class: { code: "asc" } }, { student: { name: "asc" } }],
   });
 
-  const rows = enrollments.map((e) => ({
-    id: e.id,
-    nim: e.student.identifier,
-    name: e.student.name,
-    kelas: e.class.code,
-    prodi: e.class.program.code,
-    lrScore: e.proposal?.finalGrade?.lrScore ?? null,
-    bimbinganScore: e.proposal?.finalGrade?.bimbinganScore ?? null,
-    deScore: e.proposal?.finalGrade?.deScore ?? null,
-    presentasiScore: e.proposal?.finalGrade?.presentasiScore ?? null,
-    weightedTotal: e.proposal?.finalGrade?.weightedTotal ?? null,
-    gradeIndex: e.proposal?.finalGrade?.gradeIndex ?? null,
-    passed: e.proposal?.finalGrade?.passed ?? null,
-    isLate: e.proposal?.deskEvaluation?.isLate ?? false,
-  }));
+  function avg(values: number[]): number | null {
+    if (!values.length) return null;
+    return values.reduce((a, b) => a + b, 0) / values.length;
+  }
+
+  const rows = enrollments.map((e) => {
+    const p = e.proposal;
+    const program = programByClassId[e.class.id];
+
+    const bimbinganScore = p?.nilaiBimbingan.length
+      ? avg(p.nilaiBimbingan.map((n) => n.pemilihanTema + n.researchQuestion + n.studiLiteratur1 + n.studiLiteratur2 + n.rencanaImplementasi + n.kemandirian + n.prosesBimbingan))
+      : (p?.finalGrade?.bimbinganScore ?? null);
+
+    const lrScore = p?.nilaiLiteratureReview.length
+      ? avg(p.nilaiLiteratureReview.map((n) => n.kualitasPustaka + n.kontenRumusan + n.analisisTujuan + n.kelengkapanKajian + n.kelebihanKekurangan + n.relasiTeori))
+      : (p?.finalGrade?.lrScore ?? null);
+
+    const de = p?.deskEvaluation ?? null;
+    const deRaw = de ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode : null;
+    const deScore = de ? (de.isLate ? Math.min(deRaw!, 51) : deRaw) : (p?.finalGrade?.deScore ?? null);
+
+    const presentasiScore = p?.seminar?.nilaiPresentasi.length
+      ? avg(p.seminar.nilaiPresentasi.map((n) => n.latarBelakangScore + n.teoriPendukungScore + n.toolsPemodelanScore + n.pemaparanScore + n.komunikasiScore))
+      : (p?.finalGrade?.presentasiScore ?? null);
+
+    // Compute weighted total if all components available and we have program weights
+    let weightedTotal = p?.finalGrade?.weightedTotal ?? null;
+    let gradeIndex = p?.finalGrade?.gradeIndex ?? null;
+    let passed = p?.finalGrade?.passed ?? null;
+
+    if (
+      weightedTotal === null &&
+      lrScore !== null &&
+      bimbinganScore !== null &&
+      deScore !== null &&
+      presentasiScore !== null &&
+      program
+    ) {
+      weightedTotal =
+        (lrScore * program.literatureReviewPct) / 100 +
+        (bimbinganScore * program.bimbinganPct) / 100 +
+        (deScore * program.deskEvaluationPct) / 100 +
+        (presentasiScore * program.presentasiPct) / 100;
+      if (weightedTotal > 85) gradeIndex = "A";
+      else if (weightedTotal > 75) gradeIndex = "AB";
+      else if (weightedTotal > 65) gradeIndex = "B";
+      else if (weightedTotal > 60) gradeIndex = "BC";
+      else if (weightedTotal > 50) gradeIndex = "C";
+      else if (weightedTotal > 40) gradeIndex = "D";
+      else gradeIndex = "E";
+      passed = weightedTotal > 50;
+    }
+
+    return {
+      id: e.id,
+      nim: e.student.identifier,
+      name: e.student.name,
+      kelas: e.class.code,
+      prodi: e.class.program.code,
+      status: p?.status ?? "ENROLLED",
+      lrScore,
+      bimbinganScore,
+      deScore,
+      presentasiScore,
+      weightedTotal,
+      gradeIndex,
+      passed,
+      isLate: de?.isLate ?? false,
+    };
+  });
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Rekap Nilai</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Nilai akhir seluruh mahasiswa di kelas Anda
+          Nilai seluruh mahasiswa di kelas Anda
         </p>
       </div>
       <Card>
