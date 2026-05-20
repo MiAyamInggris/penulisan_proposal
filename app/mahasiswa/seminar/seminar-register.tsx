@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
-import { CheckCircle2, XCircle, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { registerForSeminar } from "@/lib/actions/proposal";
 import { format } from "date-fns";
@@ -53,13 +53,11 @@ export function SeminarRegister({ enrollment }: { enrollment: Enrollment }) {
   const eprtVerified = enrollment?.eprt?.status === "VERIFIED";
   const hasRevision = !!proposal.revisionUrl;
   const hasPresentation = !!proposal.presentationUrl;
-  const statusOk = proposal.status === "REVISION_UPLOADED";
   const allMet =
     bimbinganCount >= 3 &&
     eprtVerified &&
     hasRevision &&
-    hasPresentation &&
-    statusOk;
+    hasPresentation;
 
   const alreadyRegistered = [
     "SEMINAR_REGISTERED",
@@ -96,10 +94,12 @@ export function SeminarRegister({ enrollment }: { enrollment: Enrollment }) {
           <Req met={eprtVerified} label="EpRT terverifikasi" />
           <Req met={hasRevision} label="Link revisi proposal disimpan" />
           <Req met={hasPresentation} label="Link file presentasi disimpan" />
-          <Req
-            met={statusOk}
-            label="Status proposal: Revisi Diunggah"
-          />
+          <div className="flex items-start gap-2 text-sm pt-1">
+            <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+            <span className="text-yellow-700">
+              Silahkan unggah proposal yang disetujui ke iGracias
+            </span>
+          </div>
         </CardContent>
       </Card>
 

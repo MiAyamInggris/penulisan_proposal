@@ -12,13 +12,25 @@ import { Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
-const CRITERIA = [
-  { name: "latarBelakangScore", label: "Menjawab Latar Belakang, Rumusan, Tujuan & Metodologi", max: 25 },
-  { name: "teoriPendukungScore", label: "Menguasai Teori Pendukung TA", max: 15 },
-  { name: "toolsPemodelanScore", label: "Menguasai Tools Pemodelan/Simulasi/Implementasi", max: 10 },
-  { name: "pemaparanScore", label: "Pemaparan / Cara Menjawab", max: 25 },
-  { name: "komunikasiScore", label: "Komunikasi Interpersonal", max: 25 },
+const GROUPS = [
+  {
+    label: "Penguasaan Konten",
+    criteria: [
+      { name: "latarBelakangScore", label: "Menjawab Latar Belakang, Rumusan, Tujuan & Metodologi", max: 25 },
+      { name: "teoriPendukungScore", label: "Menguasai Teori Pendukung TA", max: 15 },
+      { name: "toolsPemodelanScore", label: "Menguasai Tools Pemodelan/Simulasi/Implementasi", max: 10 },
+    ],
+  },
+  {
+    label: "Penyampaian",
+    criteria: [
+      { name: "pemaparanScore", label: "Pemaparan / Cara Menjawab", max: 25 },
+      { name: "komunikasiScore", label: "Komunikasi Interpersonal", max: 25 },
+    ],
+  },
 ];
+
+const CRITERIA = GROUPS.flatMap((g) => g.criteria);
 
 type NilaiPresentasi = {
   latarBelakangScore: number;
@@ -67,33 +79,67 @@ function PresentasiForm({ proposalId, seminarId, existing, onClose }: {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {CRITERIA.map((c) => (
-        <div key={c.name} className="space-y-1">
-          <div className="flex justify-between">
-            <Label htmlFor={c.name} className="text-sm">{c.label}</Label>
-            <span className="text-xs text-gray-500">Maks: {c.max}</span>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {GROUPS.map((g) => (
+        <div key={g.label} className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 px-1">
+            {g.label}
+          </p>
+          <div className="rounded-lg border divide-y overflow-hidden">
+            {g.criteria.map((c) => (
+              <div
+                key={c.name}
+                className="flex items-center gap-4 px-4 py-3 bg-white hover:bg-gray-50 transition-colors"
+              >
+                <Label
+                  htmlFor={c.name}
+                  className="flex-1 text-sm font-normal text-gray-800 cursor-pointer leading-snug"
+                >
+                  {c.label}
+                </Label>
+                <span className="text-xs text-gray-400 shrink-0 w-14 text-right">
+                  Maks {c.max}
+                </span>
+                <Input
+                  id={c.name}
+                  name={c.name}
+                  type="number"
+                  min={0}
+                  max={c.max}
+                  step={0.5}
+                  value={scores[c.name]}
+                  onChange={(e) =>
+                    setScores((prev) => ({
+                      ...prev,
+                      [c.name]: Math.min(c.max, Math.max(0, parseFloat(e.target.value) || 0)),
+                    }))
+                  }
+                  required
+                  className="w-20 text-center shrink-0"
+                />
+              </div>
+            ))}
           </div>
-          <Input
-            id={c.name}
-            name={c.name}
-            type="number"
-            min={0}
-            max={c.max}
-            step={0.5}
-            value={scores[c.name]}
-            onChange={(e) =>
-              setScores((prev) => ({ ...prev, [c.name]: Math.min(c.max, Math.max(0, parseFloat(e.target.value) || 0)) }))
-            }
-            required
-          />
         </div>
       ))}
-      <div className="p-3 bg-gray-50 rounded-lg flex justify-between">
-        <span className="text-sm font-medium">Total</span>
-        <span className="text-lg font-bold">{total.toFixed(1)} / 100</span>
+
+      <div className="flex items-center justify-between rounded-lg border bg-gray-50 px-5 py-4">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-700">Total Nilai</p>
+          <div className="h-2 w-48 rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[#C8102E] transition-all duration-300"
+              style={{ width: `${Math.min(100, total)}%` }}
+            />
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="text-3xl font-bold text-gray-900">{total.toFixed(1)}</span>
+          <span className="text-sm text-gray-400 ml-1">/ 100</span>
+        </div>
       </div>
-      <Button type="submit" disabled={loading} className="w-full bg-[#C8102E] hover:bg-[#a50d26]">
+
+      <Button type="submit" disabled={loading} className="w-full bg-[#C8102E] hover:bg-[#a50d26] h-11">
         {loading ? "Menyimpan..." : "Simpan Nilai Presentasi"}
       </Button>
     </form>
@@ -112,7 +158,7 @@ export function PresentasiScoreList({ proposals }: { proposals: Proposal[] }) {
       {proposals.map((p) => {
         const existing = p.seminar?.nilaiPresentasi[0] ?? null;
         const total = existing
-          ? [existing.latarBelakangScore, existing.teoriPendukungScore, existing.toolsPemodelanScore, existing.pemaparanScore, existing.komunikasiScore].reduce((a, b) => a + b, 0)
+          ? CRITERIA.map((c) => (existing as unknown as Record<string, number>)[c.name]).reduce((a, b) => a + b, 0)
           : null;
 
         return (
@@ -151,7 +197,7 @@ export function PresentasiScoreList({ proposals }: { proposals: Proposal[] }) {
 
       {openId && (
         <Dialog open={!!openId} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 Nilai Presentasi – {proposals.find((p) => p.id === openId)?.enrollment.student.name}
