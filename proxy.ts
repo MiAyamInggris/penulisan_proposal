@@ -1,49 +1,39 @@
-import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
+import { NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login"];
+// Lightweight auth — no Prisma, no bcrypt, only JWT session reading.
+// Full auth config (Credentials provider) lives in lib/auth.ts.
+const { auth } = NextAuth(authConfig);
 
-// NextAuth v5 session cookie names
-const COOKIE_NAME =
-  process.env.NODE_ENV === "production"
-    ? "__Secure-authjs.session-token"
-    : "authjs.session-token";
-
-export default async function proxy(req: NextRequest) {
+export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
+  if (pathname === "/login") return NextResponse.next();
 
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  if (!token) {
+  if (!req.auth) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  try {
-    const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
-    const { payload } = await jwtVerify(token, secret);
-    const role = (payload as { role?: string }).role ?? "";
+  const role: string = (req.auth.user as { role?: string })?.role ?? "";
 
-    if (pathname.startsWith("/admin") && role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-    if (
-      (pathname.startsWith("/dosen") ||
-        pathname.startsWith("/dosen-kelas") ||
-        pathname.startsWith("/pembimbing")) &&
-      role !== "DOSEN"
-    ) {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-    if (pathname.startsWith("/mahasiswa") && role !== "MAHASISWA") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-
-    return NextResponse.next();
-  } catch {
+  if (pathname.startsWith("/admin") && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-}
+  if (
+    (pathname.startsWith("/dosen") ||
+      pathname.startsWith("/dosen-kelas") ||
+      pathname.startsWith("/pembimbing")) &&
+    role !== "DOSEN"
+  ) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+  if (pathname.startsWith("/mahasiswa") && role !== "MAHASISWA") {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
