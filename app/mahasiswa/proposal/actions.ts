@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { uploadFile } from "@/lib/storage";
 import { revalidatePath } from "next/cache";
 
 const MAX_PDF_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -12,12 +13,7 @@ async function uploadPdf(file: File, path: string): Promise<string> {
   if (file.size > MAX_PDF_BYTES)
     throw new Error("Ukuran file maksimal 5 MB");
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return `/local-uploads/${path}`;
-  }
-  const { put } = await import("@vercel/blob");
-  const blob = await put(path, file, { access: "public" });
-  return blob.url;
+  return uploadFile(file, path);
 }
 
 export async function registerProposal(formData: FormData) {

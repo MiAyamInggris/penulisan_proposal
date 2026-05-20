@@ -1,5 +1,5 @@
-import { put } from "@vercel/blob";
 import { auth } from "@/lib/auth";
+import { uploadFile } from "@/lib/storage";
 import { NextResponse } from "next/server";
 
 // Vercel serverless function max duration (seconds).
@@ -15,7 +15,6 @@ const MAX_SIZE_BYTES = 4 * 1024 * 1024; // 4 MB hard cap
 
 export async function POST(request: Request) {
   const isVercel = process.env.VERCEL === "1";
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
 
   try {
     // ── Auth ───────────────────────────────────────────────────────────────
@@ -37,7 +36,7 @@ export async function POST(request: Request) {
     console.info(
       `[/api/upload] user=${session.user.id} folder=${folder}` +
         ` file="${file.name}" size=${file.size} type=${file.type}` +
-        ` vercel=${isVercel} hasToken=${!!token}`
+        ` vercel=${isVercel}`
     );
 
     // ── Size guard (must stay under Vercel infra body limit) ──────────────
@@ -48,56 +47,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Local dev fallback (no real token) ─────────────────────────────────
-    if (!token || token.startsWith("vercel_blob_XXXX")) {
-      if (isVercel) {
-        // Misconfigured production deployment — fail loudly instead of storing
-        // a useless local URL in the database.
-        console.error(
-          "[/api/upload] BLOB_READ_WRITE_TOKEN is missing on Vercel." +
-            " Go to Vercel Dashboard → Storage → connect a Blob store and" +
-            " add BLOB_READ_WRITE_TOKEN to the project's environment variables."
-        );
-        return NextResponse.json(
-          {
-            error:
-              "Konfigurasi penyimpanan file belum diatur di server. " +
-              "Hubungi administrator.",
-          },
-          { status: 503 }
-        );
-      }
-
-      // Local dev: return a deterministic fake URL so the UI flow can be tested.
-      return NextResponse.json({
-        url: `/local-uploads/${folder}/${Date.now()}-${encodeURIComponent(file.name)}`,
-      });
-    }
-
-    // ── Vercel Blob upload ─────────────────────────────────────────────────
+    // ── Upload via storage abstraction (Supabase → Vercel Blob → local) ────
     const path = `${folder}/${Date.now()}-${encodeURIComponent(file.name)}`;
+    const url = await uploadFile(file, path);
 
-    let blob;
-    try {
-      blob = await put(path, file, { access: "public", token });
-    } catch (blobErr: any) {
-      console.error(
-        `[/api/upload] Vercel Blob put() failed:`,
-        blobErr?.message ?? blobErr
-      );
-      return NextResponse.json(
-        {
-          error:
-            blobErr?.message?.includes("token")
-              ? "Token penyimpanan file tidak valid. Periksa konfigurasi BLOB_READ_WRITE_TOKEN."
-              : `Gagal menyimpan file: ${blobErr?.message ?? "unknown error"}`,
-        },
-        { status: 502 }
-      );
-    }
-
-    console.info(`[/api/upload] OK → ${blob.url}`);
-    return NextResponse.json({ url: blob.url });
+    console.info(`[/api/upload] OK → ${url}`);
+    return NextResponse.json({ url });
   } catch (err: any) {
     console.error("[/api/upload] Unhandled error:", err?.message ?? err);
     return NextResponse.json(
