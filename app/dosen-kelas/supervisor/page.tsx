@@ -14,22 +14,23 @@ export default async function SupervisorPage() {
     })
   ).map((c) => c.id);
 
-  const proposals = await prisma.proposal.findMany({
-    where: {
-      enrollment: { classId: { in: myClassIds } },
-    },
+  // Query enrollments (not proposals) so ALL registered students appear,
+  // even those who haven't submitted their proposal title/abstract yet.
+  const enrollments = await prisma.classEnrollment.findMany({
+    where: { classId: { in: myClassIds }, isActive: true },
     include: {
-      enrollment: {
+      student: { select: { name: true, identifier: true } },
+      class: { select: { code: true } },
+      proposal: {
         include: {
-          student: { select: { name: true, identifier: true } },
-          class: { select: { code: true } },
+          supervisor1Requested: { select: { id: true, name: true } },
+          supervisor2Requested: { select: { id: true, name: true } },
+          supervisor1Assigned: { select: { id: true, name: true } },
+          supervisor2Assigned: { select: { id: true, name: true } },
         },
       },
-      supervisor1Requested: { select: { id: true, name: true } },
-      supervisor2Requested: { select: { id: true, name: true } },
-      supervisor1Assigned: { select: { id: true, name: true } },
-      supervisor2Assigned: { select: { id: true, name: true } },
     },
+    orderBy: [{ class: { code: "asc" } }, { student: { name: "asc" } }],
   });
 
   const pembimbingList = await prisma.user.findMany({
@@ -46,7 +47,7 @@ export default async function SupervisorPage() {
           Tugaskan pembimbing berdasarkan hasil Rapat Pleno
         </p>
       </div>
-      <SupervisorAssignList proposals={proposals} pembimbingList={pembimbingList} />
+      <SupervisorAssignList enrollments={enrollments} pembimbingList={pembimbingList} />
     </div>
   );
 }

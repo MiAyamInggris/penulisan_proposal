@@ -6,30 +6,33 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { assignSupervisors } from "./actions";
-import { UserCheck, Download } from "lucide-react";
+import { UserCheck, Download, ClipboardX } from "lucide-react";
 
-type Proposal = {
+type ProposalData = {
   id: string;
   titleId: string;
   abstract: string | null;
   proposalUrl: string | null;
-  enrollment: {
-    student: { name: string; identifier: string };
-    class: { code: string };
-  };
   supervisor1Requested: { id: string; name: string } | null;
   supervisor2Requested: { id: string; name: string } | null;
   supervisor1Assigned: { id: string; name: string } | null;
   supervisor2Assigned: { id: string; name: string } | null;
 };
 
+type EnrollmentItem = {
+  id: string;
+  student: { name: string; identifier: string };
+  class: { code: string };
+  proposal: ProposalData | null;
+};
+
 type Pembimbing = { id: string; name: string };
 
 export function SupervisorAssignList({
-  proposals,
+  enrollments,
   pembimbingList,
 }: {
-  proposals: Proposal[];
+  enrollments: EnrollmentItem[];
   pembimbingList: Pembimbing[];
 }) {
   const [loading, setLoading] = useState<string | null>(null);
@@ -57,95 +60,135 @@ export function SupervisorAssignList({
     }
   };
 
-  if (proposals.length === 0) {
-    return <p className="text-gray-500">Belum ada proposal di kelas Anda.</p>;
+  if (enrollments.length === 0) {
+    return <p className="text-gray-500">Belum ada mahasiswa terdaftar di kelas Anda.</p>;
   }
 
+  const withProposal = enrollments.filter((e) => e.proposal !== null);
+  const withoutProposal = enrollments.filter((e) => e.proposal === null);
+
   return (
-    <div className="space-y-3">
-      {proposals.map((p) => (
-        <Card key={p.id}>
-          <CardContent className="pt-4 space-y-3">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{p.enrollment.class.code}</span>
-                <span className="font-medium text-gray-900">{p.enrollment.student.name}</span>
-                <span className="text-xs text-gray-500">{p.enrollment.student.identifier}</span>
-                {p.proposalUrl && (
-                  <a
-                    href={p.proposalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-auto inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+    <div className="space-y-4">
+      {/* Students without proposals yet */}
+      {withoutProposal.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Belum mengumpulkan proposal ({withoutProposal.length})
+          </p>
+          {withoutProposal.map((e) => (
+            <Card key={e.id} className="border-dashed border-gray-300 bg-gray-50/50">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-3">
+                  <ClipboardX className="h-4 w-4 text-gray-400 shrink-0" />
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded shrink-0">{e.class.code}</span>
+                    <span className="font-medium text-gray-900">{e.student.name}</span>
+                    <span className="text-xs text-gray-500">{e.student.identifier}</span>
+                  </div>
+                  <span className="ml-auto shrink-0 text-xs text-gray-400 italic">Belum ada proposal</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Students with proposals */}
+      {withProposal.length > 0 && (
+        <div className="space-y-3">
+          {withoutProposal.length > 0 && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Sudah mengumpulkan proposal ({withProposal.length})
+            </p>
+          )}
+          {withProposal.map((e) => {
+            const p = e.proposal!;
+            return (
+              <Card key={p.id}>
+                <CardContent className="pt-4 space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{e.class.code}</span>
+                      <span className="font-medium text-gray-900">{e.student.name}</span>
+                      <span className="text-xs text-gray-500">{e.student.identifier}</span>
+                      {p.proposalUrl && (
+                        <a
+                          href={p.proposalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                        >
+                          <Download className="h-3 w-3" />
+                          Proposal PDF
+                        </a>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-1">{p.titleId}</p>
+                    {p.abstract && (
+                      <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">
+                        {p.abstract}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
+                    <div>
+                      <p className="font-medium mb-0.5">Usulan Mahasiswa</p>
+                      <p>Pembimbing 1: {p.supervisor1Requested?.name ?? "–"}</p>
+                      <p>Pembimbing 2: {p.supervisor2Requested?.name ?? "–"}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium mb-0.5 text-green-700">Penugasan (Rapat Pleno)</p>
+                      <p className="text-green-700">Pembimbing 1: {p.supervisor1Assigned?.name ?? "Belum ditugaskan"}</p>
+                      <p className="text-green-700">Pembimbing 2: {p.supervisor2Assigned?.name ?? "–"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Select
+                      defaultValue={p.supervisor1Assigned?.id}
+                      onValueChange={(v) => { if (v) setSelection(p.id, "s1", v); }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Pilih Pembimbing 1" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pembimbingList.map((pb) => (
+                          <SelectItem key={pb.id} value={pb.id}>{pb.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      defaultValue={p.supervisor2Assigned?.id ?? "none"}
+                      onValueChange={(v) => { setSelection(p.id, "s2", v === "none" ? "" : (v ?? "")); }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Pembimbing 2 (opsional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">– Tidak ada –</SelectItem>
+                        {pembimbingList.map((pb) => (
+                          <SelectItem key={pb.id} value={pb.id}>{pb.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    onClick={() => handleAssign(p.id)}
+                    disabled={loading === p.id}
+                    className="bg-[#C8102E] hover:bg-[#a50d26]"
                   >
-                    <Download className="h-3 w-3" />
-                    Proposal PDF
-                  </a>
-                )}
-              </div>
-              <p className="text-sm text-gray-600 mt-1 line-clamp-1">{p.titleId}</p>
-              {p.abstract && (
-                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 leading-relaxed">
-                  {p.abstract}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
-              <div>
-                <p className="font-medium mb-0.5">Usulan Mahasiswa</p>
-                <p>Pembimbing 1: {p.supervisor1Requested?.name ?? "–"}</p>
-                <p>Pembimbing 2: {p.supervisor2Requested?.name ?? "–"}</p>
-              </div>
-              <div>
-                <p className="font-medium mb-0.5 text-green-700">Penugasan (Rapat Pleno)</p>
-                <p className="text-green-700">Pembimbing 1: {p.supervisor1Assigned?.name ?? "Belum ditugaskan"}</p>
-                <p className="text-green-700">Pembimbing 2: {p.supervisor2Assigned?.name ?? "–"}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Select
-                defaultValue={p.supervisor1Assigned?.id}
-                onValueChange={(v) => { if (v) setSelection(p.id, "s1", v); }}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Pilih Pembimbing 1" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pembimbingList.map((pb) => (
-                    <SelectItem key={pb.id} value={pb.id}>{pb.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                defaultValue={p.supervisor2Assigned?.id ?? "none"}
-                onValueChange={(v) => { setSelection(p.id, "s2", v === "none" ? "" : (v ?? "")); }}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Pembimbing 2 (opsional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">– Tidak ada –</SelectItem>
-                  {pembimbingList.map((pb) => (
-                    <SelectItem key={pb.id} value={pb.id}>{pb.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              size="sm"
-              onClick={() => handleAssign(p.id)}
-              disabled={loading === p.id}
-              className="bg-[#C8102E] hover:bg-[#a50d26]"
-            >
-              <UserCheck className="mr-1 h-4 w-4" />
-              {loading === p.id ? "Menyimpan..." : "Tugaskan"}
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
+                    <UserCheck className="mr-1 h-4 w-4" />
+                    {loading === p.id ? "Menyimpan..." : "Tugaskan"}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
