@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { assignDeskEvaluator } from "./actions";
 import { ClipboardList, Download } from "lucide-react";
+import { fileDownloadUrl } from "@/lib/file-url";
 
 type Proposal = {
   id: string;
@@ -123,7 +124,7 @@ export function DEAssignList({
                   </span>
                   {p.proposalUrl && (
                     <a
-                      href={p.proposalUrl}
+                      href={fileDownloadUrl(p.proposalUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-auto inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"

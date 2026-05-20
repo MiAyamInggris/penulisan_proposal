@@ -51,10 +51,12 @@ export async function uploadFile(file: File, path: string): Promise<string> {
   }
 
   // ── 2. Vercel Blob ─────────────────────────────────────────────────────────
+  // Uploads WITHOUT access:"public" so private stores are supported.
+  // The returned URL must be fetched via /api/download (with Authorization).
   if (blobToken && !blobToken.includes("XXXX")) {
     const { put } = await import("@vercel/blob");
     const blob = await withTimeout(
-      put(path, file, { access: "public" }),
+      put(path, file, { access: "private" }),
       UPLOAD_TIMEOUT_MS
     );
     return blob.url;

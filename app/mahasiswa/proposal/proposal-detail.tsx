@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { submitForDE, uploadProposalFile } from "./actions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Download, Upload } from "lucide-react";
+import { fileDownloadUrl } from "@/lib/file-url";
 
 type Proposal = {
   id: string;
@@ -147,7 +148,7 @@ export function ProposalDetail({ proposal, eprt }: { proposal: Proposal; eprt: E
             <p className="text-xs text-gray-500 mb-2">File Proposal</p>
             {proposal.proposalUrl ? (
               <a
-                href={proposal.proposalUrl}
+                href={fileDownloadUrl(proposal.proposalUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline font-medium"

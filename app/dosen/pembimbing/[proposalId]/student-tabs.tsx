@@ -16,6 +16,7 @@ import { saveNilaiPresentasi } from "@/app/pembimbing/presentasi/actions";
 import { scheduleSeminarWithNotification } from "@/lib/actions/seminar";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { fileDownloadUrl } from "@/lib/file-url";
 import {
   CalendarDays,
   Clock,
@@ -265,7 +266,7 @@ function InfoTab({
           <CardContent className="space-y-2">
             {proposal.proposalUrl && (
               <a
-                href={proposal.proposalUrl}
+                href={fileDownloadUrl(proposal.proposalUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
@@ -276,7 +277,7 @@ function InfoTab({
             )}
             {proposal.revisionUrl && (
               <a
-                href={proposal.revisionUrl}
+                href={fileDownloadUrl(proposal.revisionUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
@@ -287,7 +288,7 @@ function InfoTab({
             )}
             {proposal.presentationUrl && (
               <a
-                href={proposal.presentationUrl}
+                href={fileDownloadUrl(proposal.presentationUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm text-blue-600 hover:underline"

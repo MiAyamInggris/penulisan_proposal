@@ -13,6 +13,7 @@ import { saveEprtRecord } from "./actions";
 import { Upload, CheckCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { fileDownloadUrl } from "@/lib/file-url";
 
 type EprtRecord = {
   id: string;
@@ -94,7 +95,7 @@ export function EprtUpload({ eprt }: { eprt: EprtRecord }) {
           <div>
             <p className="text-xs text-gray-500">File Screenshot</p>
             <a
-              href={eprt.screenshotUrl}
+              href={fileDownloadUrl(eprt.screenshotUrl)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-blue-600 hover:underline"

@@ -14,6 +14,7 @@ import {
   rejectEprt,
   setDeDeadline,
 } from "@/lib/actions/dosenKelas";
+import { fileDownloadUrl } from "@/lib/file-url";
 import {
   Select,
   SelectContent,
@@ -210,7 +211,7 @@ function EprtTab({ enrollments }: { enrollments: Enrollment[] }) {
                     )}
                     {e.eprt?.screenshotUrl && (
                       <a
-                        href={e.eprt.screenshotUrl}
+                        href={fileDownloadUrl(e.eprt.screenshotUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 hover:underline mt-1 block"

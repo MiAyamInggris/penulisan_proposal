@@ -19,6 +19,7 @@ import { verifyEprt, rejectEprt } from "./actions";
 import { CheckCircle, XCircle, ExternalLink, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { fileDownloadUrl } from "@/lib/file-url";
 
 type EprtItem = {
   id: string;
@@ -56,7 +57,7 @@ function StudentInfo({ eprt }: { eprt: EprtItem }) {
         {format(new Date(eprt.createdAt), "dd MMM yyyy HH:mm", { locale: idLocale })}
       </p>
       <a
-        href={eprt.screenshotUrl}
+        href={fileDownloadUrl(eprt.screenshotUrl)}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1"
