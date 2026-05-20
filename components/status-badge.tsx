@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 const PROPOSAL_STATUS_LABELS: Record<string, string> = {
   ENROLLED: "Terdaftar",
-  PROPOSAL_UPLOADED: "Proposal Diunggah",
+  PROPOSAL_UPLOADED: "Proposal Terdaftar",
   ASSIGNED: "Pembimbing Ditugaskan",
   BIMBINGAN: "Bimbingan",
   DE_READY: "Siap DE",

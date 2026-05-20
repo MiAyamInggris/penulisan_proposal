@@ -18,6 +18,7 @@ type Proposal = {
   titleId: string;
   titleEn: string | null;
   topicArea: string | null;
+  abstract: string | null;
   status: string;
   proposalUrl: string | null;
   supervisor1Requested: { name: string } | null;
@@ -118,6 +119,14 @@ export function ProposalDetail({ proposal, eprt }: { proposal: Proposal; eprt: E
             <div>
               <p className="text-xs text-gray-500">Bidang Topik</p>
               <p className="text-sm text-gray-700">{proposal.topicArea}</p>
+            </div>
+          )}
+          {proposal.abstract && (
+            <div>
+              <p className="text-xs text-gray-500">Abstrak</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                {proposal.abstract}
+              </p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-4 pt-2">

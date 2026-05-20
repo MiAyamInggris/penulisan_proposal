@@ -176,7 +176,7 @@ export function StudentTabs({
 
 const STAGES = [
   { key: "ENROLLED", label: "Terdaftar" },
-  { key: "PROPOSAL_UPLOADED", label: "Proposal Diunggah" },
+  { key: "PROPOSAL_UPLOADED", label: "Proposal Terdaftar" },
   { key: "ASSIGNED", label: "Pembimbing Ditugaskan" },
   { key: "BIMBINGAN", label: "Bimbingan" },
   { key: "DE_READY", label: "Siap Desk Evaluasi" },

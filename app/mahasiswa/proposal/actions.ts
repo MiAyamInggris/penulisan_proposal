@@ -30,30 +30,25 @@ export async function registerProposal(formData: FormData) {
   });
   if (existing) return { error: "Proposal sudah terdaftar" };
 
-  const file = formData.get("proposalFile") as File | null;
-  let proposalUrl: string | null = null;
+  const titleId = (formData.get("titleId") as string)?.trim();
+  const abstract = (formData.get("abstract") as string)?.trim();
 
-  if (file && file.size > 0) {
-    try {
-      proposalUrl = await uploadPdf(
-        file,
-        `proposals/${enrollment.id}-${Date.now()}.pdf`
-      );
-    } catch (e: unknown) {
-      return { error: e instanceof Error ? e.message : "Gagal mengupload file" };
-    }
-  }
+  if (!titleId) return { error: "Judul TA wajib diisi" };
+  if (!abstract) return { error: "Abstrak wajib diisi" };
+  if (abstract.length < 50)
+    return { error: "Abstrak terlalu singkat (minimal 50 karakter)" };
+  if (abstract.length > 2000)
+    return { error: "Abstrak terlalu panjang (maksimal 2000 karakter)" };
 
   await prisma.proposal.create({
     data: {
       enrollmentId: enrollment.id,
-      titleId: formData.get("titleId") as string,
-      titleEn: (formData.get("titleEn") as string) || null,
-      topicArea: (formData.get("topicArea") as string) || null,
+      titleId,
+      titleEn: (formData.get("titleEn") as string)?.trim() || null,
+      topicArea: (formData.get("topicArea") as string)?.trim() || null,
+      abstract,
       supervisor1RequestedId: (formData.get("supervisor1RequestedId") as string) || null,
       supervisor2RequestedId: (formData.get("supervisor2RequestedId") as string) || null,
-      proposalUrl,
-      proposalUploadedAt: proposalUrl ? new Date() : null,
       status: "PROPOSAL_UPLOADED",
     },
   });

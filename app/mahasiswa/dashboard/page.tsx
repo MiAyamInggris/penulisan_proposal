@@ -20,7 +20,7 @@ const STAGES = [
 
 const STAGE_LABELS: Record<string, string> = {
   ENROLLED: "Terdaftar",
-  PROPOSAL_UPLOADED: "Proposal Diunggah",
+  PROPOSAL_UPLOADED: "Proposal Terdaftar",
   ASSIGNED: "Pembimbing Ditugaskan",
   BIMBINGAN: "Bimbingan",
   DE_READY: "Siap Desk Evaluasi",

@@ -135,6 +135,7 @@ model Proposal {
   titleId      String
   titleEn      String?
   topicArea    String?
+  abstract     String?
   status       ProposalStatus @default(ENROLLED)
 
   proposalUrl        String?

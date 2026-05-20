@@ -12,27 +12,19 @@ import { registerProposal } from "./actions";
 
 type Pembimbing = { id: string; name: string; identifier: string };
 
+const ABSTRACT_MIN = 50;
+const ABSTRACT_MAX = 2000;
+
 export function ProposalForm({ pembimbingList }: { pembimbingList: Pembimbing[] }) {
   const [loading, setLoading] = useState(false);
   const [supervisor1, setSupervisor1] = useState("");
   const [supervisor2, setSupervisor2] = useState("");
+  const [abstractLen, setAbstractLen] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const file = (form.querySelector('[name="proposalFile"]') as HTMLInputElement)?.files?.[0];
-    if (file && file.size > 0) {
-      if (file.type !== "application/pdf") {
-        toast.error("Hanya file PDF yang diperbolehkan");
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Ukuran file maksimal 5 MB");
-        return;
-      }
-    }
     setLoading(true);
-    const formData = new FormData(form);
+    const formData = new FormData(e.currentTarget);
     if (supervisor1) formData.set("supervisor1RequestedId", supervisor1);
     if (supervisor2) formData.set("supervisor2RequestedId", supervisor2);
     try {
@@ -54,18 +46,22 @@ export function ProposalForm({ pembimbingList }: { pembimbingList: Pembimbing[] 
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Judul Indonesia */}
           <div className="space-y-1">
-            <Label htmlFor="titleId">Judul Proposal (Bahasa Indonesia) *</Label>
+            <Label htmlFor="titleId">Judul TA (Bahasa Indonesia) *</Label>
             <Textarea
               id="titleId"
               name="titleId"
-              placeholder="Masukkan judul proposal dalam Bahasa Indonesia"
+              placeholder="Masukkan judul TA dalam Bahasa Indonesia"
               required
               rows={3}
             />
           </div>
+
+          {/* Judul Inggris */}
           <div className="space-y-1">
-            <Label htmlFor="titleEn">Judul Proposal (Bahasa Inggris)</Label>
+            <Label htmlFor="titleEn">Judul TA (Bahasa Inggris)</Label>
             <Textarea
               id="titleEn"
               name="titleEn"
@@ -73,6 +69,8 @@ export function ProposalForm({ pembimbingList }: { pembimbingList: Pembimbing[] 
               rows={2}
             />
           </div>
+
+          {/* Bidang Topik */}
           <div className="space-y-1">
             <Label htmlFor="topicArea">Bidang Topik</Label>
             <Input
@@ -81,18 +79,30 @@ export function ProposalForm({ pembimbingList }: { pembimbingList: Pembimbing[] 
               placeholder="Contoh: Machine Learning, Web Development, dll."
             />
           </div>
+
+          {/* Abstrak */}
           <div className="space-y-1">
-            <Label htmlFor="proposalFile">File Proposal (PDF, maks. 5 MB)</Label>
-            <Input
-              id="proposalFile"
-              name="proposalFile"
-              type="file"
-              accept="application/pdf"
+            <Label htmlFor="abstract">
+              Abstrak *
+            </Label>
+            <Textarea
+              id="abstract"
+              name="abstract"
+              placeholder="Tuliskan abstrak proposal TA Anda (latar belakang, tujuan, metode, dan kontribusi)"
+              required
+              rows={8}
+              maxLength={ABSTRACT_MAX}
+              onChange={(e) => setAbstractLen(e.target.value.length)}
             />
-            <p className="text-xs text-gray-500">
-              Opsional saat pendaftaran. Dapat diunggah ulang setelah proposal terdaftar.
-            </p>
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <span>Minimal {ABSTRACT_MIN} karakter. Tidak perlu upload PDF saat pendaftaran.</span>
+              <span className={abstractLen < ABSTRACT_MIN ? "text-red-400" : "text-gray-400"}>
+                {abstractLen} / {ABSTRACT_MAX}
+              </span>
+            </div>
           </div>
+
+          {/* Pembimbing */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Pembimbing 1 (Usulan) *</Label>
@@ -127,9 +137,10 @@ export function ProposalForm({ pembimbingList }: { pembimbingList: Pembimbing[] 
               </Select>
             </div>
           </div>
+
           <Button
             type="submit"
-            disabled={loading || !supervisor1}
+            disabled={loading || !supervisor1 || abstractLen < ABSTRACT_MIN}
             className="bg-[#C8102E] hover:bg-[#a50d26]"
           >
             {loading ? "Mendaftarkan..." : "Daftarkan Proposal"}
