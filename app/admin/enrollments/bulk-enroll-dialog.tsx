@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -43,14 +43,25 @@ type Props = {
 };
 
 export function BulkEnrollDialog({ open, onClose, classes }: Props) {
-  const [classId, setClassId] = useState("");
+  const [selectedProdi, setSelectedProdi] = useState("");
+  const [classId, setClassId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BulkEnrollResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const prodiOptions = useMemo(
+    () => [...new Set(classes.map((c) => c.program.code))].sort(),
+    [classes]
+  );
+  const filteredClasses = useMemo(
+    () => (selectedProdi ? classes.filter((c) => c.program.code === selectedProdi) : classes),
+    [classes, selectedProdi]
+  );
+
   const handleClose = () => {
     setResult(null);
     setClassId("");
+    setSelectedProdi("");
     onClose();
   };
 
@@ -99,29 +110,65 @@ export function BulkEnrollDialog({ open, onClose, classes }: Props) {
 
         <div className="space-y-4">
           {/* Step 1 – Select class */}
-          <div className="rounded-lg border bg-gray-50 p-4 space-y-2">
+          <div className="rounded-lg border bg-gray-50 p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#C8102E] text-xs font-bold text-white shrink-0">
                 1
               </span>
-              <p className="text-sm font-medium">Pilih Kelas Target</p>
+              <p className="text-sm font-medium">Pilih Program Studi & Kelas Target</p>
             </div>
-            <Select value={classId} onValueChange={(v) => { if (v) setClassId(v); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kelas..." />
-              </SelectTrigger>
-              <SelectContent>
-                {classes.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.code} – {c.name} ({c.program.code}, {c.academicYear})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label className="text-xs">Filter Program Studi</Label>
+              <Select
+                value={selectedProdi || "__all__"}
+                onValueChange={(v) => {
+                  setSelectedProdi((v ?? "") === "__all__" ? "" : (v ?? ""));
+                  setClassId("");
+                }}
+              >
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Semua Program Studi" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">— Semua Program Studi —</SelectItem>
+                  {prodiOptions.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">
+                Pilih Kelas{selectedProdi && <span className="text-gray-400 ml-1">({selectedProdi})</span>}
+              </Label>
+              <Select value={classId} onValueChange={(v) => { if (v) setClassId(v); }}>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Pilih kelas..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredClasses.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-gray-500">Tidak ada kelas</div>
+                  ) : (
+                    filteredClasses.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.code} – {c.name} ({c.program.code}, {c.academicYear})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             {selectedClass && (
               <p className="text-xs text-green-700 flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Kelas dipilih: {selectedClass.code} · {selectedClass.name}
+                Kelas dipilih: <strong>{selectedClass.code}</strong> · {selectedClass.name} ·
+                Program Studi: <strong>{selectedClass.program.code}</strong>
+              </p>
+            )}
+            {selectedClass && (
+              <p className="text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">
+                Kolom <strong>Program Studi</strong> di Excel harus berisi:{" "}
+                <strong>{selectedClass.program.code}</strong>
               </p>
             )}
           </div>

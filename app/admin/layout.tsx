@@ -10,6 +10,7 @@ import {
   Settings,
   RefreshCw,
   Crown,
+  Layers,
 } from "lucide-react";
 
 const navItems = [
@@ -44,8 +45,13 @@ const navItems = [
     icon: <RefreshCw className="h-4 w-4" />,
   },
   {
+    href: "/admin/kelompok-keahlian",
+    label: "Kelompok Keahlian",
+    icon: <Layers className="h-4 w-4" />,
+  },
+  {
     href: "/admin/ketua-kk",
-    label: "Ketua KK",
+    label: "Kuota Dosen",
     icon: <Crown className="h-4 w-4" />,
   },
   {

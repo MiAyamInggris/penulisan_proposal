@@ -49,8 +49,13 @@ export async function bulkEnrollMahasiswa(
   if (session?.user?.role !== "ADMIN") throw new Error("Tidak terautentikasi");
   if (!classId) throw new Error("Kelas wajib dipilih");
 
-  const targetClass = await prisma.class.findUnique({ where: { id: classId } });
+  const targetClass = await prisma.class.findUnique({
+    where: { id: classId },
+    include: { program: { select: { code: true } } },
+  });
   if (!targetClass) throw new Error("Kelas tidak ditemukan");
+
+  const classProdi = targetClass.program.code as string;
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) throw new Error("File wajib diisi");
@@ -141,6 +146,16 @@ export async function bulkEnrollMahasiswa(
         row: rowNum,
         nim,
         reason: `Program Studi '${prodiRaw}' tidak valid. Gunakan: RPL, IF, DS, atau SI`,
+      });
+      continue;
+    }
+    // Validate prodi matches target class prodi
+    if (prodiRaw !== classProdi) {
+      result.failed++;
+      result.errors.push({
+        row: rowNum,
+        nim,
+        reason: `Program Studi mahasiswa (${prodiRaw}) tidak sesuai dengan kelas (${classProdi})`,
       });
       continue;
     }

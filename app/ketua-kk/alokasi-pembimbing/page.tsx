@@ -1,8 +1,29 @@
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGlobalQuota } from "@/lib/settings";
+import { getMyKK } from "@/lib/kk";
 import { AllocateList } from "./allocate-list";
+import { AlertCircle } from "lucide-react";
 
 export default async function KetuaKKAlokasiPage() {
+  const session = await auth();
+  const myKK = await getMyKK(session!.user.id);
+
+  if (!myKK) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold text-gray-900">Alokasi Pembimbing</h1>
+        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Anda belum ditugaskan ke Kelompok Keahlian</p>
+            <p className="text-sm mt-1">Hubungi Admin untuk mendapatkan penugasan KK.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [enrollments, dosenList, globalQuota] = await Promise.all([
     prisma.classEnrollment.findMany({
       where: { isActive: true },
@@ -29,8 +50,9 @@ export default async function KetuaKKAlokasiPage() {
       },
       orderBy: [{ class: { program: { code: "asc" } } }, { student: { name: "asc" } }],
     }),
+    // Only dosen in this KK can be assigned as supervisors
     prisma.user.findMany({
-      where: { role: "DOSEN", isActive: true },
+      where: { role: "DOSEN", isActive: true, kelompokKeahlianId: myKK.id },
       select: {
         id: true,
         name: true,
@@ -59,15 +81,21 @@ export default async function KetuaKKAlokasiPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Alokasi Pembimbing</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Tugaskan pembimbing untuk seluruh mahasiswa — kuota ditampilkan di tiap pilihan (maks:{" "}
-          {globalQuota} per dosen)
+          <span className="font-medium text-gray-700">{myKK.nama}</span> · tugaskan pembimbing
+          dari KK ini (maks: {globalQuota} per dosen)
         </p>
       </div>
-      <AllocateList
-        enrollments={enrollments}
-        pembimbingList={pembimbingList}
-        globalQuota={globalQuota}
-      />
+      {pembimbingList.length === 0 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Belum ada dosen dalam Kelompok Keahlian ini. Hubungi Admin untuk menambahkan anggota.
+        </div>
+      ) : (
+        <AllocateList
+          enrollments={enrollments}
+          pembimbingList={pembimbingList}
+          globalQuota={globalQuota}
+        />
+      )}
     </div>
   );
 }

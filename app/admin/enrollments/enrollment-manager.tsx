@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,12 +31,31 @@ export function EnrollmentManager({
   classes: ClassData[];
   students: Student[];
 }) {
+  const [selectedProdi, setSelectedProdi] = useState<string>("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedStudent, setSelectedStudent] = useState("");
   const [loading, setLoading] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
 
+  // Derive unique prodi codes from class list
+  const prodiOptions = useMemo(
+    () => [...new Set(classes.map((c) => c.program.code))].sort(),
+    [classes]
+  );
+
+  // Filter classes by selected prodi
+  const filteredClasses = useMemo(
+    () => (selectedProdi ? classes.filter((c) => c.program.code === selectedProdi) : classes),
+    [classes, selectedProdi]
+  );
+
   const currentClass = classes.find((c) => c.id === selectedClass);
+
+  const handleProdiChange = (prodi: string | null) => {
+    setSelectedProdi((prodi ?? "") === "__all__" ? "" : (prodi ?? ""));
+    setSelectedClass(""); // reset class when prodi changes
+    setSelectedStudent("");
+  };
 
   const handleEnroll = async () => {
     if (!selectedClass || !selectedStudent) return;
@@ -88,24 +107,60 @@ export function EnrollmentManager({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Prodi filter */}
             <div className="space-y-1">
-              <Label>Pilih Kelas</Label>
-              <Select onValueChange={(v: string | null) => { if (v) setSelectedClass(v); }}>
+              <Label>Filter Program Studi</Label>
+              <Select
+                value={selectedProdi || "__all__"}
+                onValueChange={handleProdiChange}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih kelas..." />
+                  <SelectValue placeholder="Semua Program Studi" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.code} – {c.name} ({c.program.code}, {c.academicYear})
+                  <SelectItem value="__all__">— Semua Program Studi —</SelectItem>
+                  {prodiOptions.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Class selector (filtered by prodi) */}
+            <div className="space-y-1">
+              <Label>Pilih Kelas {selectedProdi && <span className="text-gray-400">({selectedProdi})</span>}</Label>
+              <Select
+                value={selectedClass || undefined}
+                onValueChange={(v) => { if (v) setSelectedClass(v); }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih kelas..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredClasses.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-gray-500">
+                      Tidak ada kelas untuk prodi ini
+                    </div>
+                  ) : (
+                    filteredClasses.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.code} – {c.name} ({c.program.code}, {c.academicYear})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Student selector */}
             <div className="space-y-1">
               <Label>Pilih Mahasiswa</Label>
-              <Select onValueChange={(v: string | null) => { if (v) setSelectedStudent(v); }} value={selectedStudent || undefined}>
+              <Select
+                onValueChange={(v) => { if (v) setSelectedStudent(v); }}
+                value={selectedStudent || undefined}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih mahasiswa..." />
                 </SelectTrigger>
@@ -118,6 +173,7 @@ export function EnrollmentManager({
                 </SelectContent>
               </Select>
             </div>
+
             <Button
               onClick={handleEnroll}
               disabled={!selectedClass || !selectedStudent || loading}
@@ -132,8 +188,12 @@ export function EnrollmentManager({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Daftar Mahasiswa{" "}
-              {currentClass ? `– ${currentClass.code}` : ""}
+              Daftar Mahasiswa{currentClass ? ` – ${currentClass.code}` : ""}
+              {currentClass && (
+                <span className="text-xs font-normal text-gray-500 ml-1">
+                  ({currentClass.program.code})
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -144,7 +204,10 @@ export function EnrollmentManager({
             ) : (
               <div className="space-y-2">
                 {currentClass.enrollments.map((e, idx) => (
-                  <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 group">
+                  <div
+                    key={e.id}
+                    className="flex items-center justify-between p-2 rounded-lg bg-gray-50 group"
+                  >
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-gray-400 w-6">{idx + 1}</span>
                       <div>

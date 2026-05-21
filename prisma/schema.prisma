@@ -64,10 +64,11 @@ model User {
   password           String
   role               Role
   identifier         String
-  isActive           Boolean  @default(true)
-  isKetua            Boolean  @default(false)
-  maxBimbinganQuota  Int      @default(5)
-  createdAt          DateTime @default(now())
+  isActive             Boolean  @default(true)
+  isKetua              Boolean  @default(false)
+  maxBimbinganQuota    Int      @default(5)
+  kelompokKeahlianId   String?
+  createdAt            DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   classesAsDosenKelas    Class[]           @relation("DosenKelas")
@@ -83,6 +84,9 @@ model User {
   nilaiPresentasi        NilaiPresentasi[]
   eprtVerifications      EprtRecord[]      @relation("EprtVerifier")
   notificationsReceived  Notification[]    @relation("NotificationRecipient")
+
+  kelompokKeahlian KelompokKeahlian? @relation("KKAnggota", fields: [kelompokKeahlianId], references: [id])
+  ketuaDiKK        KelompokKeahlian? @relation("KKKetua")
 }
 
 model Program {
@@ -306,6 +310,19 @@ model Notification {
   createdAt   DateTime         @default(now())
 
   recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id])
+}
+
+// ─── Kelompok Keahlian ───────────────────────────────────────────────────────
+
+model KelompokKeahlian {
+  id        String   @id @default(cuid())
+  nama      String
+  ketuaId   String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ketua User?  @relation("KKKetua", fields: [ketuaId], references: [id])
+  dosen User[] @relation("KKAnggota")
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
