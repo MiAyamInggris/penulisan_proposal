@@ -193,3 +193,89 @@ export async function executeSync(): Promise<
     return { error: String(err) };
   }
 }
+
+// ─── KK Sync ─────────────────────────────────────────────────────────────────
+
+export type KKSyncResult =
+  | { success: true; kkCreated: number; dosenUpdated: number; dosenSkipped: number; dosenFailed: number }
+  | { error: string };
+
+export async function syncKKData(): Promise<KKSyncResult> {
+  const session = await auth();
+  if (session?.user?.role !== "ADMIN") return { error: "Unauthorized" };
+
+  try {
+    // Collect unique KK names from reference data
+    const uniqueKKNames = [...new Set(DOSEN_REFERENCE.map((r) => r.kkNama))];
+
+    // Upsert each KK by name — preserve id/ketuaId/members
+    let kkCreated = 0;
+    const kkByName = new Map<string, string>(); // nama → id
+
+    for (const nama of uniqueKKNames) {
+      const existing = await prisma.kelompokKeahlian.findFirst({ where: { nama } });
+      if (existing) {
+        kkByName.set(nama, existing.id);
+      } else {
+        const created = await prisma.kelompokKeahlian.create({
+          data: { nama },
+          select: { id: true },
+        });
+        kkByName.set(nama, created.id);
+        kkCreated++;
+      }
+    }
+
+    // Pre-load all dosen from DB for fast lookup
+    const dbDosen = await prisma.user.findMany({
+      where: { role: "DOSEN" },
+      select: { id: true, email: true, identifier: true },
+    });
+    const byEmail = new Map(dbDosen.map((u) => [u.email.toLowerCase(), u]));
+    const byNip = new Map(dbDosen.map((u) => [u.identifier.toLowerCase(), u]));
+
+    let dosenUpdated = 0;
+    let dosenSkipped = 0;
+    let dosenFailed = 0;
+
+    for (const ref of DOSEN_REFERENCE) {
+      // Match: email first, then NIP/identifier
+      const db =
+        byEmail.get(ref.email.toLowerCase()) ??
+        (ref.nip ? byNip.get(ref.nip.toLowerCase()) : undefined);
+
+      if (!db) {
+        dosenSkipped++;
+        continue;
+      }
+
+      const kkId = kkByName.get(ref.kkNama);
+      if (!kkId) {
+        dosenFailed++;
+        continue;
+      }
+
+      try {
+        await prisma.user.update({
+          where: { id: db.id },
+          data: {
+            kodeDosen: ref.kode,
+            kelompokKeahlianId: kkId,
+          },
+        });
+        dosenUpdated++;
+      } catch {
+        dosenFailed++;
+      }
+    }
+
+    revalidatePath("/admin/dosen-sync");
+    revalidatePath("/admin/kelompok-keahlian");
+    revalidatePath("/admin/ketua-kk");
+    revalidatePath("/ketua-kk/alokasi-pembimbing");
+
+    return { success: true, kkCreated, dosenUpdated, dosenSkipped, dosenFailed };
+  } catch (err) {
+    return { error: String(err) };
+  }
+}
