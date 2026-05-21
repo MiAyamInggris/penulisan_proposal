@@ -33,6 +33,9 @@ export async function verifyEprt(eprtId: string) {
 }
 
 export async function rejectEprt(eprtId: string) {
+  const session = await auth();
+  if (!session) return { error: "Tidak terautentikasi" };
+
   await prisma.eprtRecord.delete({ where: { id: eprtId } });
   revalidatePath("/dosen-kelas/eprt");
   revalidatePath("/dosen/kelas");
