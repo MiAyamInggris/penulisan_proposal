@@ -9,6 +9,7 @@ import {
   School,
   Settings,
   RefreshCw,
+  Crown,
 } from "lucide-react";
 
 const navItems = [
@@ -41,6 +42,11 @@ const navItems = [
     href: "/admin/dosen-sync",
     label: "Sinkronisasi Dosen",
     icon: <RefreshCw className="h-4 w-4" />,
+  },
+  {
+    href: "/admin/ketua-kk",
+    label: "Ketua KK",
+    icon: <Crown className="h-4 w-4" />,
   },
   {
     href: "/account/settings",
