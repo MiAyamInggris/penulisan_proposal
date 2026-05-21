@@ -34,9 +34,9 @@ export default async function KetuaKKKuotaPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Kuota Pembimbing</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Informasi Kuota Pembimbing</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Atur jumlah maksimal mahasiswa bimbingan per dosen
+          Pantau kapasitas dan beban bimbingan setiap dosen. Pengubahan kuota hanya dapat dilakukan oleh Admin.
         </p>
       </div>
       <QuotaTable dosenList={rows} />

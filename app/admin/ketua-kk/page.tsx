@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { KetuaKKManager } from "./ketua-kk-manager";
+import { AdminKKTabs } from "./admin-kk-tabs";
 
 export default async function AdminKetuaKKPage() {
   const [dosenList, globalStats] = await Promise.all([
@@ -22,36 +22,47 @@ export default async function AdminKetuaKKPage() {
     }),
     Promise.all([
       prisma.proposal.count({ where: { supervisor1AssignedId: { not: null } } }),
-      prisma.proposal.count({ where: { supervisor1AssignedId: { not: null }, supervisor2AssignedId: { not: null } } }),
+      prisma.proposal.count({
+        where: {
+          supervisor1AssignedId: { not: null },
+          supervisor2AssignedId: { not: null },
+        },
+      }),
       prisma.classEnrollment.count({ where: { isActive: true } }),
     ]),
   ]);
 
   const [totalAssigned, totalBothAssigned, totalEnrolled] = globalStats;
 
-  const rows = dosenList.map((d) => ({
+  const activeStatuses = [
+    "ASSIGNED", "BIMBINGAN", "DE_READY", "DE_COMPLETED",
+    "REVISION_UPLOADED", "SEMINAR_REGISTERED", "SEMINAR_COMPLETED",
+  ];
+
+  const kkRows = dosenList.map((d) => ({
     id: d.id,
     name: d.name,
     identifier: d.identifier,
     isKetua: d.isKetua,
     maxBimbinganQuota: d.maxBimbinganQuota,
     bimbinganCount: d.supervisedAsFirst.length + d.supervisedAsSecond.length,
-    activeBimbingan: d.supervisedAsFirst.filter((p) =>
-      ["ASSIGNED", "BIMBINGAN", "DE_READY", "DE_COMPLETED", "REVISION_UPLOADED"].includes(p.status)
-    ).length + d.supervisedAsSecond.filter((p) =>
-      ["ASSIGNED", "BIMBINGAN", "DE_READY", "DE_COMPLETED", "REVISION_UPLOADED"].includes(p.status)
-    ).length,
+    activeBimbingan:
+      d.supervisedAsFirst.filter((p) => activeStatuses.includes(p.status)).length +
+      d.supervisedAsSecond.filter((p) => activeStatuses.includes(p.status)).length,
   }));
 
-  const ketuaCount = rows.filter((d) => d.isKetua).length;
-  const totalDosenWithBimbingan = rows.filter((d) => d.bimbinganCount > 0).length;
+  // Quota rows share same data but without activeBimbingan (not needed for quota editor)
+  const quotaRows = kkRows.map(({ activeBimbingan: _a, ...rest }) => rest);
+
+  const ketuaCount = kkRows.filter((d) => d.isKetua).length;
+  const totalDosenWithBimbingan = kkRows.filter((d) => d.bimbinganCount > 0).length;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Manajemen Ketua KK</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Kelola penugasan Ketua Kelompok Keahlian dan pantau alokasi pembimbing
+          Kelola penugasan Ketua KK dan pengaturan kuota pembimbing
         </p>
       </div>
 
@@ -63,7 +74,7 @@ export default async function AdminKetuaKKPage() {
         <SummaryCard label="Pembimbing Lengkap (1+2)" value={totalBothAssigned} color="purple" />
       </div>
 
-      <KetuaKKManager rows={rows} totalEnrolled={totalEnrolled} />
+      <AdminKKTabs kkRows={kkRows} quotaRows={quotaRows} totalEnrolled={totalEnrolled} />
     </div>
   );
 }
@@ -77,16 +88,16 @@ function SummaryCard({
   value: number;
   color: "yellow" | "blue" | "green" | "purple";
 }) {
-  const colors = {
-    yellow: "bg-yellow-50 text-yellow-700",
-    blue: "bg-blue-50 text-blue-700",
-    green: "bg-green-50 text-green-700",
-    purple: "bg-purple-50 text-purple-700",
-  };
+  const textColor = {
+    yellow: "text-yellow-700",
+    blue: "text-blue-700",
+    green: "text-green-700",
+    purple: "text-purple-700",
+  }[color];
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-3xl font-bold ${colors[color].split(" ")[1]}`}>{value}</p>
+      <p className={`text-3xl font-bold ${textColor}`}>{value}</p>
     </div>
   );
 }
