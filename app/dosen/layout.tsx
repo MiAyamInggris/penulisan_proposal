@@ -16,6 +16,7 @@ import {
   Presentation,
   CalendarPlus,
   Settings,
+  Crown,
 } from "lucide-react";
 
 const koordinatorNavItems = [
@@ -131,6 +132,14 @@ export default async function DosenLayout({
       href: "/dosen/desk-evaluation-assessment",
       label: "Desk Evaluation Assessment",
       icon: <ClipboardCheck className="h-4 w-4 text-orange-600" />,
+    });
+  }
+
+  if (session.user.isKetua) {
+    navItems.push({
+      href: "/ketua-kk/dashboard",
+      label: "Panel Ketua KK",
+      icon: <Crown className="h-4 w-4 text-yellow-500" />,
     });
   }
 

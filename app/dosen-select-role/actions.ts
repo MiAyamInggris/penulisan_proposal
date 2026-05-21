@@ -29,3 +29,7 @@ export async function clearDosenRole() {
   cookieStore.delete("dosen-context-role");
   redirect("/dosen-select-role");
 }
+
+export async function selectKetuaKKRole() {
+  redirect("/ketua-kk/dashboard");
+}

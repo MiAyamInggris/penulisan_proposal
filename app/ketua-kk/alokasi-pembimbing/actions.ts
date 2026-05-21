@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { getGlobalQuota } from "@/lib/settings";
 import { revalidatePath } from "next/cache";
 
 export async function assignSupervisorsKK(
@@ -13,11 +14,10 @@ export async function assignSupervisorsKK(
 
   if (!s1) return { error: "Pembimbing 1 wajib dipilih" };
 
+  const globalQuota = await getGlobalQuota();
+
   // Quota check for supervisor 1
-  const s1User = await prisma.user.findUnique({
-    where: { id: s1 },
-    select: { maxBimbinganQuota: true, name: true },
-  });
+  const s1User = await prisma.user.findUnique({ where: { id: s1 }, select: { name: true } });
   if (s1User) {
     const currentCount = await prisma.proposal.count({
       where: {
@@ -25,17 +25,14 @@ export async function assignSupervisorsKK(
         id: { not: proposalId },
       },
     });
-    if (currentCount >= s1User.maxBimbinganQuota) {
-      return { error: `Kuota ${s1User.name} sudah penuh (${currentCount}/${s1User.maxBimbinganQuota})` };
+    if (currentCount >= globalQuota) {
+      return { error: `Kuota ${s1User.name} sudah penuh (${currentCount}/${globalQuota})` };
     }
   }
 
   // Quota check for supervisor 2
   if (s2) {
-    const s2User = await prisma.user.findUnique({
-      where: { id: s2 },
-      select: { maxBimbinganQuota: true, name: true },
-    });
+    const s2User = await prisma.user.findUnique({ where: { id: s2 }, select: { name: true } });
     if (s2User) {
       const currentCount = await prisma.proposal.count({
         where: {
@@ -43,8 +40,8 @@ export async function assignSupervisorsKK(
           id: { not: proposalId },
         },
       });
-      if (currentCount >= s2User.maxBimbinganQuota) {
-        return { error: `Kuota ${s2User.name} sudah penuh (${currentCount}/${s2User.maxBimbinganQuota})` };
+      if (currentCount >= globalQuota) {
+        return { error: `Kuota ${s2User.name} sudah penuh (${currentCount}/${globalQuota})` };
       }
     }
   }

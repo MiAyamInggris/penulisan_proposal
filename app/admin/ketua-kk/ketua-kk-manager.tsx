@@ -13,7 +13,6 @@ type DosenRow = {
   name: string;
   identifier: string;
   isKetua: boolean;
-  maxBimbinganQuota: number;
   bimbinganCount: number;
   activeBimbingan: number;
 };
@@ -31,9 +30,11 @@ function SortIcon({ field, active, dir }: { field: string; active: boolean; dir:
 export function KetuaKKManager({
   rows,
   totalEnrolled,
+  globalQuota,
 }: {
   rows: DosenRow[];
   totalEnrolled: number;
+  globalQuota: number;
 }) {
   const [saving, setSaving] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -119,7 +120,7 @@ export function KetuaKKManager({
               </thead>
               <tbody>
                 {ketuaRows.map((kk) => {
-                  const pct = Math.round((kk.bimbinganCount / (kk.maxBimbinganQuota || 1)) * 100);
+                  const pct = Math.round((kk.bimbinganCount / (globalQuota || 1)) * 100);
                   return (
                     <tr key={kk.id} className="border-b border-yellow-100 last:border-0">
                       <td className="py-2 pr-4 font-medium text-yellow-900">
@@ -131,7 +132,7 @@ export function KetuaKKManager({
                       </td>
                       <td className="py-2 px-4 text-center font-medium text-yellow-900">{kk.activeBimbingan}</td>
                       <td className="py-2 px-4 text-center text-yellow-800">{kk.bimbinganCount}</td>
-                      <td className="py-2 px-4 text-center text-yellow-800">{kk.maxBimbinganQuota}</td>
+                      <td className="py-2 px-4 text-center text-yellow-800">{globalQuota}</td>
                       <td className="py-2 px-4">
                         <div className="flex items-center gap-2 justify-center">
                           <div className="w-20 bg-yellow-200 rounded-full h-1.5">
@@ -232,7 +233,7 @@ export function KetuaKKManager({
                 </tr>
               )}
               {filtered.map((row) => {
-                const pct = Math.round((row.bimbinganCount / (row.maxBimbinganQuota || 1)) * 100);
+                const pct = Math.round((row.bimbinganCount / (globalQuota || 1)) * 100);
                 return (
                   <tr key={row.id} className="border-b last:border-0 hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
@@ -264,7 +265,7 @@ export function KetuaKKManager({
                           />
                         </div>
                         <span className="text-xs text-gray-500 w-14 shrink-0">
-                          {row.bimbinganCount}/{row.maxBimbinganQuota}
+                          {row.bimbinganCount}/{globalQuota}
                         </span>
                       </div>
                     </td>

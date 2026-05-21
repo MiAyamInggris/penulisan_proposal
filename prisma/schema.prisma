@@ -308,6 +308,13 @@ model Notification {
   recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id])
 }
 
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+model Setting {
+  key   String @id
+  value String
+}
+
 // ─── Final Grade ──────────────────────────────────────────────────────────────
 
 model FinalGrade {

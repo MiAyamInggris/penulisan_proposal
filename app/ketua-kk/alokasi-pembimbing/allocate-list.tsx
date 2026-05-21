@@ -30,15 +30,16 @@ type PembimbingOption = {
   id: string;
   name: string;
   bimbinganCount: number;
-  maxBimbinganQuota: number;
 };
 
 export function AllocateList({
   enrollments,
   pembimbingList,
+  globalQuota,
 }: {
   enrollments: EnrollmentItem[];
   pembimbingList: PembimbingOption[];
+  globalQuota: number;
 }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, { s1: string; s2: string }>>({});
@@ -74,7 +75,7 @@ export function AllocateList({
   const withoutProposal = enrollments.filter((e) => e.proposal === null);
 
   const quotaLabel = (pb: PembimbingOption) =>
-    `${pb.name} (${pb.bimbinganCount}/${pb.maxBimbinganQuota})`;
+    `${pb.name} (${pb.bimbinganCount}/${globalQuota})`;
 
   return (
     <div className="space-y-4">
@@ -168,10 +169,10 @@ export function AllocateList({
                           <SelectItem
                             key={pb.id}
                             value={pb.id}
-                            disabled={pb.bimbinganCount >= pb.maxBimbinganQuota}
+                            disabled={pb.bimbinganCount >= globalQuota}
                           >
                             {quotaLabel(pb)}
-                            {pb.bimbinganCount >= pb.maxBimbinganQuota && " – PENUH"}
+                            {pb.bimbinganCount >= globalQuota && " – PENUH"}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -189,10 +190,10 @@ export function AllocateList({
                           <SelectItem
                             key={pb.id}
                             value={pb.id}
-                            disabled={pb.bimbinganCount >= pb.maxBimbinganQuota}
+                            disabled={pb.bimbinganCount >= globalQuota}
                           >
                             {quotaLabel(pb)}
-                            {pb.bimbinganCount >= pb.maxBimbinganQuota && " – PENUH"}
+                            {pb.bimbinganCount >= globalQuota && " – PENUH"}
                           </SelectItem>
                         ))}
                       </SelectContent>

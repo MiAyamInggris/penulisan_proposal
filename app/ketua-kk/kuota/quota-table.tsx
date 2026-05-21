@@ -1,26 +1,42 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Crown, Lock } from "lucide-react";
+import { Crown, Lock, Globe } from "lucide-react";
 
 type DosenRow = {
   id: string;
   name: string;
   identifier: string;
   isKetua: boolean;
-  maxBimbinganQuota: number;
   bimbinganCount: number;
 };
 
-export function QuotaTable({ dosenList }: { dosenList: DosenRow[] }) {
+export function QuotaTable({
+  dosenList,
+  globalQuota,
+}: {
+  dosenList: DosenRow[];
+  globalQuota: number;
+}) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         <Lock className="h-4 w-4 shrink-0 text-amber-600" />
         <span>
-          Kuota hanya dapat diubah oleh <strong>Admin</strong>.
-          Hubungi Admin jika perlu penyesuaian kuota dosen.
+          Kuota hanya dapat diubah oleh <strong>Admin</strong>. Hubungi Admin jika perlu
+          penyesuaian kuota dosen.
         </span>
+      </div>
+
+      {/* Global quota display */}
+      <div className="flex items-center gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+        <Globe className="h-5 w-5 text-blue-600 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-blue-900">Kuota Global Saat Ini</p>
+          <p className="text-xs text-blue-700">Berlaku untuk semua dosen pembimbing</p>
+        </div>
+        <span className="ml-auto text-2xl font-bold text-blue-700">{globalQuota}</span>
+        <span className="text-sm text-blue-600">bimbingan</span>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -37,11 +53,9 @@ export function QuotaTable({ dosenList }: { dosenList: DosenRow[] }) {
           </thead>
           <tbody>
             {dosenList.map((d) => {
-              const sisa = d.maxBimbinganQuota - d.bimbinganCount;
+              const sisa = globalQuota - d.bimbinganCount;
               const pct =
-                d.maxBimbinganQuota > 0
-                  ? Math.round((d.bimbinganCount / d.maxBimbinganQuota) * 100)
-                  : 100;
+                globalQuota > 0 ? Math.round((d.bimbinganCount / globalQuota) * 100) : 100;
               return (
                 <tr key={d.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-4 py-3">
@@ -54,7 +68,7 @@ export function QuotaTable({ dosenList }: { dosenList: DosenRow[] }) {
                   <td className="px-4 py-3 text-center">
                     <span
                       className={
-                        d.bimbinganCount >= d.maxBimbinganQuota
+                        d.bimbinganCount >= globalQuota
                           ? "text-red-600 font-semibold"
                           : "text-gray-700 font-medium"
                       }
@@ -62,9 +76,7 @@ export function QuotaTable({ dosenList }: { dosenList: DosenRow[] }) {
                       {d.bimbinganCount}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center text-gray-600 font-medium">
-                    {d.maxBimbinganQuota}
-                  </td>
+                  <td className="px-4 py-3 text-center text-gray-600 font-medium">{globalQuota}</td>
                   <td className="px-4 py-3 text-center">
                     <span
                       className={

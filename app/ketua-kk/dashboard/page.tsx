@@ -1,43 +1,38 @@
 import { prisma } from "@/lib/prisma";
+import { getGlobalQuota } from "@/lib/settings";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function KetuaKKDashboard() {
-  const dosenList = await prisma.user.findMany({
-    where: { role: "DOSEN", isActive: true },
-    select: {
-      id: true,
-      name: true,
-      identifier: true,
-      isKetua: true,
-      maxBimbinganQuota: true,
-      supervisedAsFirst: {
-        where: {
-          status: {
-            notIn: ["ENROLLED", "PROPOSAL_UPLOADED"],
-          },
+  const [dosenList, globalQuota] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "DOSEN", isActive: true },
+      select: {
+        id: true,
+        name: true,
+        identifier: true,
+        isKetua: true,
+        supervisedAsFirst: {
+          where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
+          select: { id: true },
         },
-        select: { id: true },
-      },
-      supervisedAsSecond: {
-        where: {
-          status: {
-            notIn: ["ENROLLED", "PROPOSAL_UPLOADED"],
-          },
+        supervisedAsSecond: {
+          where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
+          select: { id: true },
         },
-        select: { id: true },
+        assignedDeskEvals: {
+          select: { id: true },
+        },
       },
-      assignedDeskEvals: {
-        select: { id: true },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
+      orderBy: { name: "asc" },
+    }),
+    getGlobalQuota(),
+  ]);
 
   const rows = dosenList.map((d) => {
     const bimbinganCount = d.supervisedAsFirst.length + d.supervisedAsSecond.length;
     const deCount = d.assignedDeskEvals.length;
-    const usage = bimbinganCount / (d.maxBimbinganQuota || 1);
+    const usage = bimbinganCount / (globalQuota || 1);
     const status = usage >= 1 ? "penuh" : usage >= 0.7 ? "hampir penuh" : "tersedia";
     return { ...d, bimbinganCount, deCount, usage, status };
   });
@@ -47,7 +42,7 @@ export default async function KetuaKKDashboard() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Ketua KK</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Monitoring beban bimbingan seluruh dosen
+          Monitoring beban bimbingan seluruh dosen (kuota global: {globalQuota} per dosen)
         </p>
       </div>
 
@@ -94,7 +89,9 @@ export default async function KetuaKKDashboard() {
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Dosen</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">NIP</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600">Bimbingan</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Kuota</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-600">
+                    Kuota ({globalQuota})
+                  </th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600">DE</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
                 </tr>
@@ -112,7 +109,7 @@ export default async function KetuaKKDashboard() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">{d.identifier}</td>
                     <td className="px-4 py-3 text-center font-medium">{d.bimbinganCount}</td>
-                    <td className="px-4 py-3 text-center text-gray-500">{d.maxBimbinganQuota}</td>
+                    <td className="px-4 py-3 text-center text-gray-500">{globalQuota}</td>
                     <td className="px-4 py-3 text-center">{d.deCount}</td>
                     <td className="px-4 py-3 text-center">
                       <Badge

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
-import { LayoutDashboard, Users, Sliders, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Sliders, Settings, ArrowLeft } from "lucide-react";
 
 const navItems = [
   {
@@ -23,6 +23,11 @@ const navItems = [
     href: "/account/settings",
     label: "Pengaturan Akun",
     icon: <Settings className="h-4 w-4" />,
+  },
+  {
+    href: "/dosen/dashboard",
+    label: "Kembali ke Dosen",
+    icon: <ArrowLeft className="h-4 w-4" />,
   },
 ];
 

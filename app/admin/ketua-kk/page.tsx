@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { getGlobalQuota } from "@/lib/settings";
 import { AdminKKTabs } from "./admin-kk-tabs";
 
 export default async function AdminKetuaKKPage() {
-  const [dosenList, globalStats] = await Promise.all([
+  const [dosenList, globalStats, globalQuota] = await Promise.all([
     prisma.user.findMany({
       where: { role: "DOSEN", isActive: true },
       select: {
@@ -10,7 +11,6 @@ export default async function AdminKetuaKKPage() {
         name: true,
         identifier: true,
         isKetua: true,
-        maxBimbinganQuota: true,
         supervisedAsFirst: {
           select: { id: true, status: true },
         },
@@ -30,6 +30,7 @@ export default async function AdminKetuaKKPage() {
       }),
       prisma.classEnrollment.count({ where: { isActive: true } }),
     ]),
+    getGlobalQuota(),
   ]);
 
   const [totalAssigned, totalBothAssigned, totalEnrolled] = globalStats;
@@ -44,14 +45,12 @@ export default async function AdminKetuaKKPage() {
     name: d.name,
     identifier: d.identifier,
     isKetua: d.isKetua,
-    maxBimbinganQuota: d.maxBimbinganQuota,
     bimbinganCount: d.supervisedAsFirst.length + d.supervisedAsSecond.length,
     activeBimbingan:
       d.supervisedAsFirst.filter((p) => activeStatuses.includes(p.status)).length +
       d.supervisedAsSecond.filter((p) => activeStatuses.includes(p.status)).length,
   }));
 
-  // Quota rows share same data but without activeBimbingan (not needed for quota editor)
   const quotaRows = kkRows.map(({ activeBimbingan: _a, ...rest }) => rest);
 
   const ketuaCount = kkRows.filter((d) => d.isKetua).length;
@@ -74,7 +73,12 @@ export default async function AdminKetuaKKPage() {
         <SummaryCard label="Pembimbing Lengkap (1+2)" value={totalBothAssigned} color="purple" />
       </div>
 
-      <AdminKKTabs kkRows={kkRows} quotaRows={quotaRows} totalEnrolled={totalEnrolled} />
+      <AdminKKTabs
+        kkRows={kkRows}
+        quotaRows={quotaRows}
+        totalEnrolled={totalEnrolled}
+        globalQuota={globalQuota}
+      />
     </div>
   );
 }

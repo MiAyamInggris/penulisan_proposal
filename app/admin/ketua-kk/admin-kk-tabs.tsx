@@ -9,7 +9,6 @@ type KKRow = {
   name: string;
   identifier: string;
   isKetua: boolean;
-  maxBimbinganQuota: number;
   bimbinganCount: number;
   activeBimbingan: number;
 };
@@ -18,10 +17,12 @@ export function AdminKKTabs({
   kkRows,
   quotaRows,
   totalEnrolled,
+  globalQuota,
 }: {
   kkRows: KKRow[];
   quotaRows: QuotaRow[];
   totalEnrolled: number;
+  globalQuota: number;
 }) {
   const [tab, setTab] = useState<"kk" | "quota">("kk");
 
@@ -51,15 +52,18 @@ export function AdminKKTabs({
         </button>
       </div>
 
-      {tab === "kk" && <KetuaKKManager rows={kkRows} totalEnrolled={totalEnrolled} />}
+      {tab === "kk" && (
+        <KetuaKKManager rows={kkRows} totalEnrolled={totalEnrolled} globalQuota={globalQuota} />
+      )}
 
       {tab === "quota" && (
         <div className="space-y-3">
           <div className="rounded-md border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            Kuota di sini menentukan batas maksimal mahasiswa bimbingan per dosen.
-            Ketua KK hanya dapat <strong>melihat</strong> kuota — pengubahan harus dilakukan oleh Admin di halaman ini.
+            Kuota di sini menentukan batas maksimal mahasiswa bimbingan per dosen. Ini adalah kuota
+            global yang berlaku untuk semua dosen. Ketua KK hanya dapat{" "}
+            <strong>melihat</strong> kuota — pengubahan harus dilakukan oleh Admin di halaman ini.
           </div>
-          <QuotaEditor dosenList={quotaRows} />
+          <QuotaEditor dosenList={quotaRows} globalQuota={globalQuota} />
         </div>
       )}
     </div>

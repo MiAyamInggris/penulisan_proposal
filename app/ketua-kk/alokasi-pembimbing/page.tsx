@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { getGlobalQuota } from "@/lib/settings";
 import { AllocateList } from "./allocate-list";
 
 export default async function KetuaKKAlokasiPage() {
-  const [enrollments, dosenList] = await Promise.all([
+  const [enrollments, dosenList, globalQuota] = await Promise.all([
     prisma.classEnrollment.findMany({
       where: { isActive: true },
       include: {
@@ -33,7 +34,6 @@ export default async function KetuaKKAlokasiPage() {
       select: {
         id: true,
         name: true,
-        maxBimbinganQuota: true,
         supervisedAsFirst: {
           where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
           select: { id: true },
@@ -45,12 +45,12 @@ export default async function KetuaKKAlokasiPage() {
       },
       orderBy: { name: "asc" },
     }),
+    getGlobalQuota(),
   ]);
 
   const pembimbingList = dosenList.map((d) => ({
     id: d.id,
     name: d.name,
-    maxBimbinganQuota: d.maxBimbinganQuota,
     bimbinganCount: d.supervisedAsFirst.length + d.supervisedAsSecond.length,
   }));
 
@@ -59,10 +59,15 @@ export default async function KetuaKKAlokasiPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Alokasi Pembimbing</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Tugaskan pembimbing untuk seluruh mahasiswa — kuota ditampilkan di tiap pilihan
+          Tugaskan pembimbing untuk seluruh mahasiswa — kuota ditampilkan di tiap pilihan (maks:{" "}
+          {globalQuota} per dosen)
         </p>
       </div>
-      <AllocateList enrollments={enrollments} pembimbingList={pembimbingList} />
+      <AllocateList
+        enrollments={enrollments}
+        pembimbingList={pembimbingList}
+        globalQuota={globalQuota}
+      />
     </div>
   );
 }
