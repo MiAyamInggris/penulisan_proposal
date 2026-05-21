@@ -4,7 +4,7 @@ import { useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, FileText } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
   Dialog,
@@ -79,6 +79,7 @@ export type RekapRow = {
   kelas: string;
   prodi: string;
   status: string;
+  proposalId: string | null;
   lrScore: number | null;
   bimbinganScore: number | null;
   deScore: number | null;
@@ -445,6 +446,37 @@ const staticColumns: ColumnDef<RekapRow>[] = [
       ) : (
         <span className="text-red-600 font-semibold text-xs">TIDAK LULUS</span>
       ),
+  },
+  {
+    id: "formulir",
+    header: "Formulir",
+    cell: ({ row }) => {
+      const pid = row.original.proposalId;
+      if (!pid) return <span className="text-gray-300 text-xs">–</span>;
+      const links = [
+        { label: "DE", href: `/print/desk-evaluation/${pid}`, title: "Form Nilai Desk Evaluation" },
+        { label: "BIM", href: `/print/bimbingan/${pid}`, title: "Form Nilai Bimbingan" },
+        { label: "LR", href: `/print/literature-review/${pid}`, title: "Form Nilai Literature Review" },
+        { label: "PRES", href: `/print/presentasi/${pid}`, title: "Form Nilai Presentasi" },
+      ];
+      return (
+        <div className="flex gap-1 flex-wrap">
+          {links.map((l) => (
+            <a
+              key={l.label}
+              href={l.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={l.title}
+              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+            >
+              <FileText className="h-2.5 w-2.5" />
+              {l.label}
+            </a>
+          ))}
+        </div>
+      );
+    },
   },
 ];
 

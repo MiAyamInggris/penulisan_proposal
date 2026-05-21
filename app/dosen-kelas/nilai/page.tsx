@@ -68,7 +68,6 @@ export default async function NilaiRekapPage() {
       ? avg(p.seminar.nilaiPresentasi.map((n) => n.latarBelakangScore + n.teoriPendukungScore + n.toolsPemodelanScore + n.pemaparanScore + n.komunikasiScore))
       : (p?.finalGrade?.presentasiScore ?? null);
 
-    // Compute weighted total if all components available and we have program weights
     let weightedTotal = p?.finalGrade?.weightedTotal ?? null;
     let gradeIndex = p?.finalGrade?.gradeIndex ?? null;
     let passed = p?.finalGrade?.passed ?? null;
@@ -103,6 +102,7 @@ export default async function NilaiRekapPage() {
       kelas: e.class.code,
       prodi: e.class.program.code,
       status: p?.status ?? "ENROLLED",
+      proposalId: p?.id ?? null,
       lrScore,
       bimbinganScore,
       deScore,

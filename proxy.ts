@@ -23,7 +23,8 @@ export default auth((req) => {
   if (
     (pathname.startsWith("/dosen") ||
       pathname.startsWith("/dosen-kelas") ||
-      pathname.startsWith("/pembimbing")) &&
+      pathname.startsWith("/pembimbing") ||
+      pathname.startsWith("/print")) &&
     role !== "DOSEN"
   ) {
     return NextResponse.redirect(new URL("/login", req.url));
