@@ -58,15 +58,17 @@ enum NotificationType {
 // ─── Core Models ─────────────────────────────────────────────────────────────
 
 model User {
-  id         String   @id @default(cuid())
-  name       String
-  email      String   @unique
-  password   String
-  role       Role
-  identifier String
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  password           String
+  role               Role
+  identifier         String
+  isActive           Boolean  @default(true)
+  isKetua            Boolean  @default(false)
+  maxBimbinganQuota  Int      @default(5)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   classesAsDosenKelas    Class[]           @relation("DosenKelas")
   enrollments            ClassEnrollment[]

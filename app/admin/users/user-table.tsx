@@ -16,9 +16,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { createUser, updateUser, toggleUserActive } from "./actions";
+import { createUser, updateUser, toggleUserActive, toggleKetua } from "./actions";
 import { ImportMahasiswaDialog } from "./import-dialog";
-import { Plus, Pencil, PowerOff, Power, Upload } from "lucide-react";
+import { Plus, Pencil, PowerOff, Power, Upload, Crown } from "lucide-react";
 import { Role } from "@prisma/client";
 
 type UserRow = {
@@ -28,6 +28,7 @@ type UserRow = {
   role: Role;
   identifier: string;
   isActive: boolean;
+  isKetua: boolean;
   createdAt: Date;
 };
 
@@ -133,6 +134,12 @@ export function UserTable({ users }: { users: UserRow[] }) {
     }
   };
 
+  const handleToggleKetua = async (user: UserRow) => {
+    const res = await toggleKetua(user.id, !user.isKetua);
+    if ("error" in res) toast.error(res.error);
+    else toast.success(user.isKetua ? "Status Ketua KK dicabut" : "Dosen dijadikan Ketua KK");
+  };
+
   const columns: ColumnDef<UserRow>[] = [
     { accessorKey: "name", header: "Nama" },
     { accessorKey: "email", header: "Email" },
@@ -141,11 +148,18 @@ export function UserTable({ users }: { users: UserRow[] }) {
       accessorKey: "role",
       header: "Role",
       cell: ({ row }) => (
-        <span
-          className={`px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[row.original.role]}`}
-        >
-          {ROLE_OPTIONS.find((r) => r.value === row.original.role)?.label ?? row.original.role}
-        </span>
+        <div className="flex items-center gap-1 flex-wrap">
+          <span
+            className={`px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[row.original.role]}`}
+          >
+            {ROLE_OPTIONS.find((r) => r.value === row.original.role)?.label ?? row.original.role}
+          </span>
+          {row.original.role === "DOSEN" && row.original.isKetua && (
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 flex items-center gap-1">
+              <Crown className="h-3 w-3" /> Ketua KK
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -177,6 +191,16 @@ export function UserTable({ users }: { users: UserRow[] }) {
               <Power className="h-4 w-4 text-green-500" />
             )}
           </Button>
+          {row.original.role === "DOSEN" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleToggleKetua(row.original)}
+              title={row.original.isKetua ? "Cabut Ketua KK" : "Jadikan Ketua KK"}
+            >
+              <Crown className={`h-4 w-4 ${row.original.isKetua ? "text-yellow-500" : "text-gray-300"}`} />
+            </Button>
+          )}
         </div>
       ),
     },

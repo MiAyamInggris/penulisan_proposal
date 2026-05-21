@@ -9,6 +9,7 @@ export const authConfig = {
       if (user) {
         token.role = (user as { role: string }).role;
         token.identifier = (user as { identifier: string }).identifier;
+        token.isKetua = (user as { isKetua?: boolean }).isKetua ?? false;
       }
       return token;
     },
@@ -17,6 +18,7 @@ export const authConfig = {
         session.user.role = token.role as string;
         session.user.identifier = token.identifier as string;
         session.user.id = token.sub!;
+        session.user.isKetua = (token.isKetua as boolean) ?? false;
       }
       return session;
     },

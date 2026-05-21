@@ -10,6 +10,7 @@ export default async function UsersPage() {
       email: true,
       role: true,
       isActive: true,
+      isKetua: true,
       identifier: true,
       createdAt: true,
     },

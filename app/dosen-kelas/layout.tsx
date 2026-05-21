@@ -12,6 +12,7 @@ import {
   ClipboardEdit,
   BarChart3,
   Settings,
+  Crown,
 } from "lucide-react";
 
 const baseNavItems = [
@@ -70,17 +71,17 @@ export default async function DosenKelasLayout({
     where: { deskEvaluatorId: session.user.id },
   });
 
-  const navItems =
-    assignedDECount > 0
-      ? [
-          ...baseNavItems,
-          {
-            href: "/dosen/desk-evaluation-assessment",
-            label: "Desk Evaluation Assessment",
-            icon: <ClipboardEdit className="h-4 w-4" />,
-          },
-        ]
-      : baseNavItems;
+  const kkNavItem = session.user.isKetua
+    ? [{ href: "/ketua-kk/dashboard", label: "Panel Ketua KK", icon: <Crown className="h-4 w-4" /> }]
+    : [];
+
+  const navItems = [
+    ...baseNavItems,
+    ...(assignedDECount > 0
+      ? [{ href: "/dosen/desk-evaluation-assessment", label: "Desk Evaluation Assessment", icon: <ClipboardEdit className="h-4 w-4" /> }]
+      : []),
+    ...kkNavItem,
+  ];
 
   return (
     <div className="flex h-screen overflow-hidden">

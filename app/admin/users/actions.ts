@@ -82,6 +82,14 @@ export async function toggleUserActive(id: string, isActive: boolean) {
   return { success: true };
 }
 
+export async function toggleKetua(id: string, isKetua: boolean) {
+  const user = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+  if (!user || user.role !== "DOSEN") return { error: "Hanya Dosen yang dapat dijadikan Ketua KK" };
+  await prisma.user.update({ where: { id }, data: { isKetua } });
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
 export async function importMahasiswa(formData: FormData): Promise<ImportResult> {
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) throw new Error("File wajib diisi");

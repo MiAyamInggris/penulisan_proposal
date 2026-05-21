@@ -36,6 +36,7 @@ export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget 
     MAHASISWA: "Mahasiswa",
     "Dosen Pengampu": "Dosen Pengampu",
     Pembimbing: "Pembimbing",
+    "Ketua Kelompok Keahlian": "Ketua Kelompok Keahlian",
   };
 
   const SidebarContent = () => (
