@@ -8,7 +8,6 @@ import {
   BookOpen,
   Users,
   ClipboardCheck,
-  CalendarCheck,
   ShieldCheck,
   UserCheck,
   BarChart3,
@@ -16,8 +15,6 @@ import {
   Presentation,
   CalendarPlus,
   Settings,
-  Crown,
-  BookMarked,
 } from "lucide-react";
 
 const koordinatorNavItems = [
@@ -96,8 +93,6 @@ const pembimbingNavItems = [
   },
 ];
 
-void CalendarCheck;
-
 export default async function DosenLayout({
   children,
 }: {
@@ -120,14 +115,14 @@ export default async function DosenLayout({
 
   const isKoordinator = contextRole === "KOORDINATOR";
   const roleLabel = isKoordinator ? "Dosen Pengampu" : "Pembimbing";
-  
-  // Check if assigned as Desk Evaluator
+
+  // Check if assigned as Desk Evaluator — adds menu item without changing role
   const assignedDECount = await prisma.proposal.count({
     where: { deskEvaluatorId: session.user.id },
   });
 
   let navItems = isKoordinator ? [...koordinatorNavItems] : [...pembimbingNavItems];
-  
+
   if (assignedDECount > 0) {
     navItems.push({
       href: "/dosen/desk-evaluation-assessment",
@@ -136,28 +131,9 @@ export default async function DosenLayout({
     });
   }
 
-  if (session.user.isKetua) {
-    navItems.push({
-      href: "/ketua-kk/dashboard",
-      label: "Panel Ketua KK",
-      icon: <Crown className="h-4 w-4 text-yellow-500" />,
-    });
-  }
-
-  if (session.user.isKaprodi) {
-    navItems.push({
-      href: "/kaprodi/dashboard",
-      label: "Panel Kaprodi",
-      icon: <BookMarked className="h-4 w-4 text-indigo-500" />,
-    });
-  }
-
-  const roleSwitchTarget: "PEMBIMBING" | "KOORDINATOR" | undefined = coordinatorClasses > 0
-    ? (isKoordinator ? "PEMBIMBING" : "KOORDINATOR")
-    : undefined;
-
   const isKetua = session.user.isKetua ?? false;
   const isKaprodi = session.user.isKaprodi ?? false;
+  // Show "Ganti Peran" whenever the user has more than one context to switch between
   const hasMultipleRoles = coordinatorClasses > 0 || isKetua || isKaprodi;
 
   return (
@@ -167,7 +143,6 @@ export default async function DosenLayout({
         userEmail={session.user.email}
         userName={session.user.name}
         role={roleLabel}
-        roleSwitchTarget={roleSwitchTarget}
         showRoleSwitch={hasMultipleRoles}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">

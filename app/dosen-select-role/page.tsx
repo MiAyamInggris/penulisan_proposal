@@ -1,7 +1,9 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Users, GraduationCap, Crown, BookMarked } from "lucide-react";
 import { selectDosenRole, selectKetuaKKRole, selectKaprodiRole } from "./actions";
 
@@ -21,6 +23,10 @@ export default async function SelectRolePage() {
     await selectDosenRole("PEMBIMBING");
   }
 
+  // Read current active context to highlight the active role
+  const cookieStore = await cookies();
+  const activeContext = cookieStore.get("dosen-context-role")?.value ?? null;
+
   const cardCount =
     1 +
     (coordinatorClasses > 0 ? 1 : 0) +
@@ -31,6 +37,12 @@ export default async function SelectRolePage() {
       ? "grid grid-cols-1 md:grid-cols-3 gap-6"
       : "grid grid-cols-1 md:grid-cols-2 gap-6";
 
+  const ActiveBadge = () => (
+    <Badge className="absolute top-3 right-3 bg-green-100 text-green-700 text-xs px-2 py-0.5 pointer-events-none">
+      Sedang Aktif
+    </Badge>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-5xl w-full space-y-8">
@@ -40,7 +52,7 @@ export default async function SelectRolePage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Pilih Peran Anda</h1>
           <p className="text-gray-500 mt-2">
-            Silakan pilih peran yang ingin Anda gunakan untuk sesi ini.
+            Pilih peran yang ingin Anda gunakan. Peran yang sedang aktif ditandai dengan badge hijau.
           </p>
         </div>
 
@@ -48,7 +60,12 @@ export default async function SelectRolePage() {
           {/* Pembimbing card */}
           <form action={selectDosenRole.bind(null, "PEMBIMBING")}>
             <button className="w-full text-left group">
-              <Card className="relative overflow-hidden border-2 border-transparent transition-all duration-300 hover:border-[#C8102E] hover:shadow-xl group-hover:-translate-y-1">
+              <Card className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl group-hover:-translate-y-1 ${
+                activeContext === "PEMBIMBING" || (!activeContext && coordinatorClasses === 0)
+                  ? "border-[#C8102E] shadow-md"
+                  : "border-transparent hover:border-[#C8102E]"
+              }`}>
+                {(activeContext === "PEMBIMBING" || (!activeContext && coordinatorClasses === 0)) && <ActiveBadge />}
                 <CardContent className="pt-8 pb-8 px-8">
                   <div className="mb-6 w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 transition-colors group-hover:bg-blue-100">
                     <Users className="h-7 w-7" />
@@ -73,7 +90,12 @@ export default async function SelectRolePage() {
           {coordinatorClasses > 0 && (
             <form action={selectDosenRole.bind(null, "KOORDINATOR")}>
               <button className="w-full text-left group">
-                <Card className="relative overflow-hidden border-2 border-transparent transition-all duration-300 hover:border-[#C8102E] hover:shadow-xl group-hover:-translate-y-1">
+                <Card className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl group-hover:-translate-y-1 ${
+                  activeContext === "KOORDINATOR"
+                    ? "border-[#C8102E] shadow-md"
+                    : "border-transparent hover:border-[#C8102E]"
+                }`}>
+                  {activeContext === "KOORDINATOR" && <ActiveBadge />}
                   <CardContent className="pt-8 pb-8 px-8">
                     <div className="mb-6 w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 transition-colors group-hover:bg-purple-100">
                       <GraduationCap className="h-7 w-7" />
@@ -149,7 +171,7 @@ export default async function SelectRolePage() {
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          Anda dapat mengubah peran kapan saja melalui menu di dashboard.
+          Gunakan tombol &ldquo;Ganti Peran&rdquo; di sidebar untuk berpindah kapan saja.
         </p>
       </div>
     </div>

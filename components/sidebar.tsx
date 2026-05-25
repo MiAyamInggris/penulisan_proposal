@@ -6,8 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, Menu, X, RefreshCw, ArrowLeftRight } from "lucide-react";
-import { switchDosenContext } from "@/app/dosen-select-role/actions";
+import { LogOut, Menu, X, ArrowLeftRight } from "lucide-react";
 
 interface NavItem {
   href: string;
@@ -20,16 +19,12 @@ interface SidebarProps {
   userEmail: string;
   userName: string;
   role: string;
-  roleSwitchTarget?: "PEMBIMBING" | "KOORDINATOR";
   showRoleSwitch?: boolean;
 }
 
-export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget, showRoleSwitch }: SidebarProps) {
+export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const switchDest = roleSwitchTarget === "KOORDINATOR" ? "/dosen/kelas" : "/dosen/pembimbing";
-  const switchLabel = roleSwitchTarget === "PEMBIMBING" ? "Buka sbg Pembimbing" : "Buka sbg Koordinator";
 
   const roleLabels: Record<string, string> = {
     ADMIN: "Administrator",
@@ -38,6 +33,7 @@ export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget,
     "Dosen Pengampu": "Dosen Pengampu",
     Pembimbing: "Pembimbing",
     "Ketua Kelompok Keahlian": "Ketua Kelompok Keahlian",
+    Kaprodi: "Kepala Program Studi",
   };
 
   const SidebarContent = () => (
@@ -86,7 +82,7 @@ export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget,
       </nav>
 
       {/* User info + logout */}
-      <div className="px-3 py-4 border-t border-gray-100 space-y-3">
+      <div className="px-3 py-4 border-t border-gray-100 space-y-2">
         <div className="px-3">
           <p className="text-sm font-medium text-gray-900 truncate">{userName}</p>
           <p className="text-xs text-gray-500 truncate">{userEmail}</p>
@@ -94,17 +90,6 @@ export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget,
             {roleLabels[role] ?? role}
           </span>
         </div>
-        {roleSwitchTarget && (
-          <form action={switchDosenContext.bind(null, roleSwitchTarget, switchDest)}>
-            <button
-              type="submit"
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
-            >
-              <RefreshCw className="h-4 w-4 shrink-0" />
-              {switchLabel}
-            </button>
-          </form>
-        )}
         {showRoleSwitch && (
           <Link
             href="/dosen-select-role"
@@ -162,7 +147,6 @@ export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget,
           </div>
         </div>
       )}
-
     </>
   );
 }
