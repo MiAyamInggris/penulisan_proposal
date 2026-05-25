@@ -1,8 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { getGlobalQuota } from "@/lib/settings";
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/audit";
 
 export async function assignSupervisorsKK(
   proposalId: string,
@@ -67,5 +69,20 @@ export async function assignSupervisorsKK(
   revalidatePath("/dosen-kelas/supervisor");
   revalidatePath("/mahasiswa/dashboard");
   revalidatePath("/dosen/pembimbing");
+  revalidatePath("/admin/audit-log");
+
+  const session = await auth();
+  if (session?.user?.id) {
+    const sv1Name = s1User?.name;
+    const sv2User = s2 ? await prisma.user.findUnique({ where: { id: s2 }, select: { name: true } }) : null;
+    await logAudit(session.user.id, "KETUA_KK", "ASSIGN_PEMBIMBING_KK", {
+      proposalId,
+      supervisor1Id: s1,
+      supervisor1Name: sv1Name,
+      supervisor2Id: s2,
+      supervisor2Name: sv2User?.name ?? null,
+    }, "PROPOSAL", proposalId);
+  }
+
   return { success: true };
 }

@@ -12,6 +12,7 @@ import {
   Crown,
   Layers,
   BookMarked,
+  ScrollText,
 } from "lucide-react";
 
 const navItems = [
@@ -59,6 +60,11 @@ const navItems = [
     href: "/admin/kaprodi",
     label: "Kaprodi",
     icon: <BookMarked className="h-4 w-4" />,
+  },
+  {
+    href: "/admin/audit-log",
+    label: "Audit Log",
+    icon: <ScrollText className="h-4 w-4" />,
   },
   {
     href: "/account/settings",

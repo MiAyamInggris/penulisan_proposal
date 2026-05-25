@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
-import { LayoutDashboard, TableProperties, Settings } from "lucide-react";
+import { LayoutDashboard, TableProperties, Upload, Settings } from "lucide-react";
 
 const navItems = [
   {
@@ -13,6 +13,11 @@ const navItems = [
     href: "/kaprodi/rekap",
     label: "Rekap Nilai",
     icon: <TableProperties className="h-4 w-4" />,
+  },
+  {
+    href: "/kaprodi/import",
+    label: "Import Historis",
+    icon: <Upload className="h-4 w-4" />,
   },
   {
     href: "/account/settings",

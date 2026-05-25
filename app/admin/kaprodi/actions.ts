@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/audit";
 
 export async function assignKaprodi(dosenId: string, programId: string): Promise<{ success: true } | { error: string }> {
   const session = await auth();
@@ -29,7 +30,15 @@ export async function assignKaprodi(dosenId: string, programId: string): Promise
       data: { isKaprodi: true },
     });
 
+    // Get dosen name for audit
+    const dosen = await prisma.user.findUnique({ where: { id: dosenId }, select: { name: true } });
+    const program = await prisma.program.findUnique({ where: { id: programId }, select: { code: true } });
+    await logAudit(session.user.id, "ADMIN", "ASSIGN_KAPRODI", {
+      dosenId, dosenName: dosen?.name, programId, prodiCode: program?.code,
+    }, "PROGRAM", programId);
+
     revalidatePath("/admin/kaprodi");
+    revalidatePath("/admin/audit-log");
     return { success: true };
   } catch (err) {
     return { error: String(err) };
@@ -58,7 +67,13 @@ export async function removeKaprodi(programId: string): Promise<{ success: true 
       data: { kaprodiId: null },
     });
 
+    const prog = await prisma.program.findUnique({ where: { id: programId }, select: { code: true } });
+    await logAudit(session.user.id, "ADMIN", "REMOVE_KAPRODI", {
+      programId, prodiCode: prog?.code, removedDosenId: program?.kaprodiId,
+    }, "PROGRAM", programId);
+
     revalidatePath("/admin/kaprodi");
+    revalidatePath("/admin/audit-log");
     return { success: true };
   } catch (err) {
     return { error: String(err) };

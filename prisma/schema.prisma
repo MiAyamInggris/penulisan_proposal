@@ -90,6 +90,7 @@ model User {
   kelompokKeahlian KelompokKeahlian? @relation("KKAnggota", fields: [kelompokKeahlianId], references: [id])
   ketuaDiKK        KelompokKeahlian? @relation("KKKetua")
   kaprodiDiProdi   Program?          @relation("KaprodiProgram")
+  auditLogs        AuditLog[]        @relation("AuditLogUser")
 }
 
 model Program {
@@ -170,6 +171,8 @@ model Proposal {
   supervisor1Assigned  User?                  @relation("Supervisor1Assigned", fields: [supervisor1AssignedId], references: [id])
   supervisor2Assigned  User?                  @relation("Supervisor2Assigned", fields: [supervisor2AssignedId], references: [id])
   deskEvaluator        User?                  @relation("DeskEvaluator", fields: [deskEvaluatorId], references: [id])
+
+  isHistoricalImport    Boolean  @default(false)
 
   bimbinganSessions     BimbinganSession[]
   nilaiBimbingan        NilaiBimbingan[]
@@ -328,6 +331,21 @@ model KelompokKeahlian {
 
   ketua User?  @relation("KKKetua", fields: [ketuaId], references: [id])
   dosen User[] @relation("KKAnggota")
+}
+
+// ─── Audit Log ───────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  userRole   String
+  action     String
+  entityType String?
+  entityId   String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation("AuditLogUser", fields: [userId], references: [id])
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
