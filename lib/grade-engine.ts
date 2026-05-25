@@ -26,9 +26,18 @@ export async function computeFinalGrade(proposalId: string): Promise<void> {
 
   const program = proposal.enrollment.class.program;
 
-  // Compute individual scores (average if 2 pembimbing)
+  // Number of pembimbing that must each complete every assessment before
+  // a component average is considered final.
+  const expectedPembimbingCount =
+    (proposal.supervisor1AssignedId ? 1 : 0) +
+    (proposal.supervisor2AssignedId ? 1 : 0);
+
+  // Bimbingan: all assigned pembimbing must have submitted
   let bimbinganScore: number | null = null;
-  if (proposal.nilaiBimbingan.length > 0) {
+  if (
+    expectedPembimbingCount > 0 &&
+    proposal.nilaiBimbingan.length >= expectedPembimbingCount
+  ) {
     const totals = proposal.nilaiBimbingan.map(
       (n) =>
         n.pemilihanTema +
@@ -42,8 +51,12 @@ export async function computeFinalGrade(proposalId: string): Promise<void> {
     bimbinganScore = totals.reduce((a, b) => a + b, 0) / totals.length;
   }
 
+  // Literature Review: all assigned pembimbing must have submitted
   let lrScore: number | null = null;
-  if (proposal.nilaiLiteratureReview.length > 0) {
+  if (
+    expectedPembimbingCount > 0 &&
+    proposal.nilaiLiteratureReview.length >= expectedPembimbingCount
+  ) {
     const totals = proposal.nilaiLiteratureReview.map(
       (n) =>
         n.kualitasPustaka +
@@ -56,6 +69,7 @@ export async function computeFinalGrade(proposalId: string): Promise<void> {
     lrScore = totals.reduce((a, b) => a + b, 0) / totals.length;
   }
 
+  // Desk Evaluation: single evaluator, required when assigned
   let deScore: number | null = null;
   if (proposal.deskEvaluation) {
     const de = proposal.deskEvaluation;
@@ -64,8 +78,13 @@ export async function computeFinalGrade(proposalId: string): Promise<void> {
     deScore = de.isLate ? Math.min(rawTotal, 51) : rawTotal;
   }
 
+  // Presentasi: all assigned pembimbing must have submitted
   let presentasiScore: number | null = null;
-  if (proposal.seminar && proposal.seminar.nilaiPresentasi.length > 0) {
+  if (
+    proposal.seminar &&
+    expectedPembimbingCount > 0 &&
+    proposal.seminar.nilaiPresentasi.length >= expectedPembimbingCount
+  ) {
     const totals = proposal.seminar.nilaiPresentasi.map(
       (n) =>
         n.latarBelakangScore +
@@ -77,7 +96,7 @@ export async function computeFinalGrade(proposalId: string): Promise<void> {
     presentasiScore = totals.reduce((a, b) => a + b, 0) / totals.length;
   }
 
-  // Only compute final grade if all required scores exist
+  // Final grade only computes when every required stakeholder has finished
   let weightedTotal: number | null = null;
   let gradeIndex: string | null = null;
   let passed: boolean | null = null;

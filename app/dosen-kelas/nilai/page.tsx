@@ -52,21 +52,32 @@ export default async function NilaiRekapPage() {
     const p = e.proposal;
     const program = programByClassId[e.class.id];
 
-    const bimbinganScore = p?.nilaiBimbingan.length
-      ? avg(p.nilaiBimbingan.map((n) => n.pemilihanTema + n.researchQuestion + n.studiLiteratur1 + n.studiLiteratur2 + n.rencanaImplementasi + n.kemandirian + n.prosesBimbingan))
-      : (p?.finalGrade?.bimbinganScore ?? null);
+    // Mirror the grade-engine rule: a component score is only considered
+    // complete when ALL assigned pembimbing have submitted.
+    const expectedPembimbingCount =
+      (p?.supervisor1AssignedId ? 1 : 0) + (p?.supervisor2AssignedId ? 1 : 0);
 
-    const lrScore = p?.nilaiLiteratureReview.length
-      ? avg(p.nilaiLiteratureReview.map((n) => n.kualitasPustaka + n.kontenRumusan + n.analisisTujuan + n.kelengkapanKajian + n.kelebihanKekurangan + n.relasiTeori))
-      : (p?.finalGrade?.lrScore ?? null);
+    const bimbinganScore =
+      expectedPembimbingCount > 0 &&
+      (p?.nilaiBimbingan.length ?? 0) >= expectedPembimbingCount
+        ? avg(p!.nilaiBimbingan.map((n) => n.pemilihanTema + n.researchQuestion + n.studiLiteratur1 + n.studiLiteratur2 + n.rencanaImplementasi + n.kemandirian + n.prosesBimbingan))
+        : (p?.finalGrade?.bimbinganScore ?? null);
+
+    const lrScore =
+      expectedPembimbingCount > 0 &&
+      (p?.nilaiLiteratureReview.length ?? 0) >= expectedPembimbingCount
+        ? avg(p!.nilaiLiteratureReview.map((n) => n.kualitasPustaka + n.kontenRumusan + n.analisisTujuan + n.kelengkapanKajian + n.kelebihanKekurangan + n.relasiTeori))
+        : (p?.finalGrade?.lrScore ?? null);
 
     const de = p?.deskEvaluation ?? null;
     const deRaw = de ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode : null;
     const deScore = de ? (de.isLate ? Math.min(deRaw!, 51) : deRaw) : (p?.finalGrade?.deScore ?? null);
 
-    const presentasiScore = p?.seminar?.nilaiPresentasi.length
-      ? avg(p.seminar.nilaiPresentasi.map((n) => n.latarBelakangScore + n.teoriPendukungScore + n.toolsPemodelanScore + n.pemaparanScore + n.komunikasiScore))
-      : (p?.finalGrade?.presentasiScore ?? null);
+    const presentasiScore =
+      expectedPembimbingCount > 0 &&
+      (p?.seminar?.nilaiPresentasi.length ?? 0) >= expectedPembimbingCount
+        ? avg(p!.seminar!.nilaiPresentasi.map((n) => n.latarBelakangScore + n.teoriPendukungScore + n.toolsPemodelanScore + n.pemaparanScore + n.komunikasiScore))
+        : (p?.finalGrade?.presentasiScore ?? null);
 
     let weightedTotal = p?.finalGrade?.weightedTotal ?? null;
     let gradeIndex = p?.finalGrade?.gradeIndex ?? null;
