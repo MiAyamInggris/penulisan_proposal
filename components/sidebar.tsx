@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, Menu, X, RefreshCw } from "lucide-react";
+import { LogOut, Menu, X, RefreshCw, ArrowLeftRight } from "lucide-react";
 import { switchDosenContext } from "@/app/dosen-select-role/actions";
 
 interface NavItem {
@@ -21,9 +21,10 @@ interface SidebarProps {
   userName: string;
   role: string;
   roleSwitchTarget?: "PEMBIMBING" | "KOORDINATOR";
+  showRoleSwitch?: boolean;
 }
 
-export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget }: SidebarProps) {
+export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget, showRoleSwitch }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -103,6 +104,15 @@ export function Sidebar({ navItems, userEmail, userName, role, roleSwitchTarget 
               {switchLabel}
             </button>
           </form>
+        )}
+        {showRoleSwitch && (
+          <Link
+            href="/dosen-select-role"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 transition-colors"
+          >
+            <ArrowLeftRight className="h-4 w-4 shrink-0" />
+            Ganti Peran
+          </Link>
         )}
         <Button
           variant="ghost"

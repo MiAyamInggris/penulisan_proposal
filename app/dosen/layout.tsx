@@ -156,6 +156,10 @@ export default async function DosenLayout({
     ? (isKoordinator ? "PEMBIMBING" : "KOORDINATOR")
     : undefined;
 
+  const isKetua = session.user.isKetua ?? false;
+  const isKaprodi = session.user.isKaprodi ?? false;
+  const hasMultipleRoles = coordinatorClasses > 0 || isKetua || isKaprodi;
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
@@ -164,6 +168,7 @@ export default async function DosenLayout({
         userName={session.user.name}
         role={roleLabel}
         roleSwitchTarget={roleSwitchTarget}
+        showRoleSwitch={hasMultipleRoles}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>
