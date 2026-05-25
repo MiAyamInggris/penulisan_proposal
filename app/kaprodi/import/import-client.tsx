@@ -136,10 +136,13 @@ export function HistoricalImportClient({ classes }: { classes: ClassOption[] }) 
             <Badge variant="outline">Pembimbing 1</Badge>
             <Badge variant="outline">Pembimbing 2</Badge>
             <Badge variant="outline">Desk Evaluator</Badge>
-            <Badge variant="outline">Nilai Bimbingan</Badge>
-            <Badge variant="outline">Nilai Literature Review</Badge>
+            <Badge variant="outline">Nilai Bimbingan P1</Badge>
+            <Badge variant="outline">Nilai Bimbingan P2</Badge>
+            <Badge variant="outline">Nilai LR P1</Badge>
+            <Badge variant="outline">Nilai LR P2</Badge>
+            <Badge variant="outline">Nilai Presentasi P1</Badge>
+            <Badge variant="outline">Nilai Presentasi P2</Badge>
             <Badge variant="outline">Nilai Desk Evaluation</Badge>
-            <Badge variant="outline">Nilai Presentasi</Badge>
           </div>
           <a href="/api/kaprodi/historical-template" download>
             <Button type="button" variant="outline" size="sm">
@@ -157,8 +160,9 @@ export function HistoricalImportClient({ classes }: { classes: ClassOption[] }) 
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-gray-500">
-            Upload file Excel (.xlsx) yang sudah diisi. Nilai akhir akan dihitung
-            otomatis berdasarkan bobot Program Studi.
+            Upload file Excel (.xlsx) yang sudah diisi. Nilai per komponen dihitung dari
+            rata-rata Pembimbing 1 dan 2, lalu nilai akhir dihitung otomatis berdasarkan
+            bobot Program Studi.
           </p>
           <input
             ref={inputRef}

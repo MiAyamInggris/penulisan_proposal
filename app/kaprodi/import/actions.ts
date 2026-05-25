@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getMyProdi } from "@/lib/kaprodi";
-import { getGradeIndex } from "@/lib/grade-engine";
+import { computeFinalGrade } from "@/lib/grade-engine";
 import { logAudit } from "@/lib/audit";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
@@ -67,8 +67,6 @@ export async function bulkImportHistorical(
   if (targetClass.programId !== prodi.id) {
     throw new Error("Kelas tidak termasuk dalam Program Studi Anda");
   }
-
-  const program = targetClass.program;
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) throw new Error("File wajib diunggah");
@@ -150,12 +148,28 @@ export async function bulkImportHistorical(
       ""
     ).trim();
 
-    const nilaiB = parseFloat_safe(row["Nilai Bimbingan"] ?? row["nilai_bimbingan"]);
-    const nilaiLR = parseFloat_safe(row["Nilai Literature Review"] ?? row["nilai_lr"]);
+    // Per-pembimbing scores (new template format)
+    const nilaiB1 = parseFloat_safe(
+      row["Nilai Bimbingan Pembimbing 1"] ?? row["Nilai Bimbingan"] ?? row["nilai_bimbingan"]
+    );
+    const nilaiB2 = parseFloat_safe(
+      row["Nilai Bimbingan Pembimbing 2"] ?? null
+    );
+    const nilaiLR1 = parseFloat_safe(
+      row["Nilai Literature Review Pembimbing 1"] ?? row["Nilai Literature Review"] ?? row["nilai_lr"]
+    );
+    const nilaiLR2 = parseFloat_safe(
+      row["Nilai Literature Review Pembimbing 2"] ?? null
+    );
+    const nilaiP1 = parseFloat_safe(
+      row["Nilai Presentasi Pembimbing 1"] ?? row["Nilai Presentasi"] ?? row["nilai_presentasi"]
+    );
+    const nilaiP2 = parseFloat_safe(
+      row["Nilai Presentasi Pembimbing 2"] ?? null
+    );
     const nilaiDE = parseFloat_safe(
       row["Nilai Desk Evaluation"] ?? row["Nilai Desk Evaluasi"] ?? row["nilai_de"]
     );
-    const nilaiP = parseFloat_safe(row["Nilai Presentasi"] ?? row["nilai_presentasi"]);
 
     // Validation
     if (!nim) {
@@ -199,6 +213,16 @@ export async function bulkImportHistorical(
     if (deskEvalRaw && !de) {
       result.warnings.push(
         `Baris ${rowNum} (${nim}): Desk Evaluator '${deskEvalRaw}' tidak ditemukan — dilewati`
+      );
+    }
+    if (nilaiB2 !== null && !sv2) {
+      result.warnings.push(
+        `Baris ${rowNum} (${nim}): Nilai Bimbingan P2 diberikan tetapi Pembimbing 2 tidak ditemukan — dilewati`
+      );
+    }
+    if (nilaiDE !== null && !de) {
+      result.warnings.push(
+        `Baris ${rowNum} (${nim}): Nilai Desk Evaluation diberikan tetapi Desk Evaluator tidak ditemukan — tidak tersimpan`
       );
     }
 
@@ -284,40 +308,146 @@ export async function bulkImportHistorical(
         proposalId = newProposal.id;
       }
 
-      // --- Compute and upsert FinalGrade ---
-      const allScoresPresent =
-        nilaiB !== null && nilaiLR !== null && nilaiDE !== null && nilaiP !== null;
+      // --- Create per-pembimbing assessment records ---
 
-      let weightedTotal: number | null = null;
-      let gradeIndex: string | null = null;
-      let passed: boolean | null = null;
-
-      if (allScoresPresent) {
-        weightedTotal =
-          (nilaiLR! * program.literatureReviewPct) / 100 +
-          (nilaiB! * program.bimbinganPct) / 100 +
-          (nilaiDE! * program.deskEvaluationPct) / 100 +
-          (nilaiP! * program.presentasiPct) / 100;
-        gradeIndex = getGradeIndex(weightedTotal);
-        passed = weightedTotal > 50;
+      // NilaiBimbingan (7 rubric fields, each = score / 7)
+      if (sv1 && nilaiB1 !== null) {
+        const perField = nilaiB1 / 7;
+        await prisma.nilaiBimbingan.upsert({
+          where: { proposalId_pembimbingId: { proposalId: proposalId!, pembimbingId: sv1.id } },
+          update: {
+            pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
+            studiLiteratur2: perField, rencanaImplementasi: perField,
+            kemandirian: perField, prosesBimbingan: perField,
+          },
+          create: {
+            proposalId: proposalId!, pembimbingId: sv1.id,
+            pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
+            studiLiteratur2: perField, rencanaImplementasi: perField,
+            kemandirian: perField, prosesBimbingan: perField,
+          },
+        });
+      }
+      if (sv2 && nilaiB2 !== null) {
+        const perField = nilaiB2 / 7;
+        await prisma.nilaiBimbingan.upsert({
+          where: { proposalId_pembimbingId: { proposalId: proposalId!, pembimbingId: sv2.id } },
+          update: {
+            pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
+            studiLiteratur2: perField, rencanaImplementasi: perField,
+            kemandirian: perField, prosesBimbingan: perField,
+          },
+          create: {
+            proposalId: proposalId!, pembimbingId: sv2.id,
+            pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
+            studiLiteratur2: perField, rencanaImplementasi: perField,
+            kemandirian: perField, prosesBimbingan: perField,
+          },
+        });
       }
 
-      const gradeData = {
-        lrScore: nilaiLR,
-        bimbinganScore: nilaiB,
-        deScore: nilaiDE,
-        presentasiScore: nilaiP,
-        weightedTotal,
-        gradeIndex,
-        passed,
-        computedAt: weightedTotal !== null ? new Date() : null,
-      };
+      // NilaiLiteratureReview (6 rubric fields, each = score / 6)
+      if (sv1 && nilaiLR1 !== null) {
+        const perField = nilaiLR1 / 6;
+        await prisma.nilaiLiteratureReview.upsert({
+          where: { proposalId_pembimbingId: { proposalId: proposalId!, pembimbingId: sv1.id } },
+          update: {
+            kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
+            kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
+          },
+          create: {
+            proposalId: proposalId!, pembimbingId: sv1.id,
+            kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
+            kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
+          },
+        });
+      }
+      if (sv2 && nilaiLR2 !== null) {
+        const perField = nilaiLR2 / 6;
+        await prisma.nilaiLiteratureReview.upsert({
+          where: { proposalId_pembimbingId: { proposalId: proposalId!, pembimbingId: sv2.id } },
+          update: {
+            kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
+            kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
+          },
+          create: {
+            proposalId: proposalId!, pembimbingId: sv2.id,
+            kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
+            kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
+          },
+        });
+      }
 
-      await prisma.finalGrade.upsert({
-        where: { proposalId: proposalId! },
-        update: gradeData,
-        create: { proposalId: proposalId!, ...gradeData },
-      });
+      // Seminar (required as FK for NilaiPresentasi)
+      let seminarId: string | null = null;
+      if ((sv1 && nilaiP1 !== null) || (sv2 && nilaiP2 !== null)) {
+        const existingSeminar = await prisma.seminar.findUnique({
+          where: { proposalId: proposalId! },
+          select: { id: true },
+        });
+        if (existingSeminar) {
+          seminarId = existingSeminar.id;
+        } else {
+          const newSeminar = await prisma.seminar.create({
+            data: { proposalId: proposalId!, status: "COMPLETED" },
+            select: { id: true },
+          });
+          seminarId = newSeminar.id;
+        }
+      }
+
+      // NilaiPresentasi (5 rubric fields, each = score / 5)
+      if (seminarId && sv1 && nilaiP1 !== null) {
+        const perField = nilaiP1 / 5;
+        await prisma.nilaiPresentasi.upsert({
+          where: { seminarId_pembimbingId: { seminarId, pembimbingId: sv1.id } },
+          update: {
+            latarBelakangScore: perField, teoriPendukungScore: perField,
+            toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
+          },
+          create: {
+            seminarId, pembimbingId: sv1.id,
+            latarBelakangScore: perField, teoriPendukungScore: perField,
+            toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
+          },
+        });
+      }
+      if (seminarId && sv2 && nilaiP2 !== null) {
+        const perField = nilaiP2 / 5;
+        await prisma.nilaiPresentasi.upsert({
+          where: { seminarId_pembimbingId: { seminarId, pembimbingId: sv2.id } },
+          update: {
+            latarBelakangScore: perField, teoriPendukungScore: perField,
+            toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
+          },
+          create: {
+            seminarId, pembimbingId: sv2.id,
+            latarBelakangScore: perField, teoriPendukungScore: perField,
+            toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
+          },
+        });
+      }
+
+      // DeskEvaluation (4 rubric fields, each = score / 4); requires evaluator
+      if (de && nilaiDE !== null) {
+        const perField = nilaiDE / 4;
+        await prisma.deskEvaluation.upsert({
+          where: { proposalId: proposalId! },
+          update: {
+            evaluatorId: de.id, isLate: false,
+            latarBelakang: perField, formulasiMasalah: perField,
+            teoriPendukung: perField, ideMetode: perField,
+          },
+          create: {
+            proposalId: proposalId!, evaluatorId: de.id, isLate: false,
+            latarBelakang: perField, formulasiMasalah: perField,
+            teoriPendukung: perField, ideMetode: perField,
+          },
+        });
+      }
+
+      // --- Compute final grade via grade engine ---
+      await computeFinalGrade(proposalId!);
 
       result.enrolled++;
     } catch (err: unknown) {

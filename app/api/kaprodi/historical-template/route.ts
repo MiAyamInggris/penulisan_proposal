@@ -16,10 +16,13 @@ export async function GET() {
       "Pembimbing 1 (Email/NIP/Kode)": "pembimbing1@telkomuniversity.ac.id",
       "Pembimbing 2 (Email/NIP/Kode)": "pembimbing2@telkomuniversity.ac.id",
       "Desk Evaluator (Email/NIP/Kode)": "deskeval@telkomuniversity.ac.id",
-      "Nilai Bimbingan": 82.5,
-      "Nilai Literature Review": 78.0,
+      "Nilai Bimbingan Pembimbing 1": 82.5,
+      "Nilai Bimbingan Pembimbing 2": 80.0,
+      "Nilai Literature Review Pembimbing 1": 78.0,
+      "Nilai Literature Review Pembimbing 2": 76.0,
+      "Nilai Presentasi Pembimbing 1": 80.0,
+      "Nilai Presentasi Pembimbing 2": 83.0,
       "Nilai Desk Evaluation": 75.0,
-      "Nilai Presentasi": 80.0,
     },
     {
       NIM: "6701220002",
@@ -28,10 +31,13 @@ export async function GET() {
       "Pembimbing 1 (Email/NIP/Kode)": "pembimbing1@telkomuniversity.ac.id",
       "Pembimbing 2 (Email/NIP/Kode)": "",
       "Desk Evaluator (Email/NIP/Kode)": "deskeval@telkomuniversity.ac.id",
-      "Nilai Bimbingan": 88.0,
-      "Nilai Literature Review": 85.0,
+      "Nilai Bimbingan Pembimbing 1": 88.0,
+      "Nilai Bimbingan Pembimbing 2": "",
+      "Nilai Literature Review Pembimbing 1": 85.0,
+      "Nilai Literature Review Pembimbing 2": "",
+      "Nilai Presentasi Pembimbing 1": 87.0,
+      "Nilai Presentasi Pembimbing 2": "",
       "Nilai Desk Evaluation": 80.0,
-      "Nilai Presentasi": 87.0,
     },
   ];
 
@@ -46,13 +52,22 @@ export async function GET() {
     { Keterangan: "  Judul Proposal — Judul proposal (default: 'Data Historis' jika kosong)" },
     { Keterangan: "  Pembimbing 1/2 — Isi dengan email ATAU NIP ATAU kode dosen (misal: AAP)" },
     { Keterangan: "  Desk Evaluator — Isi dengan email ATAU NIP ATAU kode dosen" },
-    { Keterangan: "  Nilai Bimbingan — Angka 0–100" },
-    { Keterangan: "  Nilai Literature Review — Angka 0–100" },
-    { Keterangan: "  Nilai Desk Evaluation — Angka 0–100" },
-    { Keterangan: "  Nilai Presentasi — Angka 0–100" },
+    { Keterangan: "" },
+    { Keterangan: "KOLOM NILAI (masing-masing 0–100):" },
+    { Keterangan: "  Nilai Bimbingan Pembimbing 1 — Nilai bimbingan dari Pembimbing 1" },
+    { Keterangan: "  Nilai Bimbingan Pembimbing 2 — Nilai bimbingan dari Pembimbing 2 (kosongkan jika hanya 1 pembimbing)" },
+    { Keterangan: "  Nilai Literature Review Pembimbing 1 — Nilai LR dari Pembimbing 1" },
+    { Keterangan: "  Nilai Literature Review Pembimbing 2 — Nilai LR dari Pembimbing 2 (kosongkan jika hanya 1 pembimbing)" },
+    { Keterangan: "  Nilai Presentasi Pembimbing 1 — Nilai presentasi dari Pembimbing 1" },
+    { Keterangan: "  Nilai Presentasi Pembimbing 2 — Nilai presentasi dari Pembimbing 2 (kosongkan jika hanya 1 pembimbing)" },
+    { Keterangan: "  Nilai Desk Evaluation — Nilai dari Desk Evaluator (satu kolom, bukan per-pembimbing)" },
+    { Keterangan: "" },
+    { Keterangan: "ATURAN PERHITUNGAN:" },
+    { Keterangan: "  - 1 pembimbing: nilai komponen = nilai Pembimbing 1" },
+    { Keterangan: "  - 2 pembimbing: nilai komponen = rata-rata Pembimbing 1 dan Pembimbing 2" },
+    { Keterangan: "  - Nilai akhir dihitung otomatis dari bobot program studi" },
     { Keterangan: "" },
     { Keterangan: "CATATAN:" },
-    { Keterangan: "  - Nilai akhir (weighted total) dihitung otomatis dari bobot program studi" },
     { Keterangan: "  - Akun mahasiswa dibuat otomatis jika belum ada (password = NIM)" },
     { Keterangan: "  - Baris yang sudah ada di kelas ini akan dilewati (tidak duplikat)" },
     { Keterangan: "  - Dosen yang tidak ditemukan akan menghasilkan peringatan tetapi tidak gagal" },
@@ -65,12 +80,15 @@ export async function GET() {
   wsData["!cols"] = [
     { wch: 14 }, { wch: 32 }, { wch: 45 },
     { wch: 35 }, { wch: 35 }, { wch: 35 },
-    { wch: 20 }, { wch: 24 }, { wch: 24 }, { wch: 20 },
+    { wch: 30 }, { wch: 30 },
+    { wch: 32 }, { wch: 32 },
+    { wch: 30 }, { wch: 30 },
+    { wch: 24 },
   ];
   XLSX.utils.book_append_sheet(wb, wsData, "Template");
 
   const wsInfo = XLSX.utils.json_to_sheet(infoRows);
-  wsInfo["!cols"] = [{ wch: 75 }];
+  wsInfo["!cols"] = [{ wch: 90 }];
   XLSX.utils.book_append_sheet(wb, wsInfo, "Petunjuk");
 
   const raw = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
