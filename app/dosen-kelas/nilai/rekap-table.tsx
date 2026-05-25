@@ -88,6 +88,7 @@ export type RekapRow = {
   gradeIndex: string | null;
   passed: boolean | null;
   isLate: boolean;
+  isRetake?: boolean;
   weights: ProgramWeights | null;
   detail: AssessmentDetail;
 };
@@ -103,6 +104,7 @@ function exportToExcel(rows: RekapRow[]) {
     Kelas: r.kelas,
     NIM: r.nim,
     Nama: r.name,
+    Mengulang: r.isRetake ? "Ya" : "Tidak",
     Prodi: r.prodi,
     Status: STATUS_LABELS[r.status] ?? r.status,
     "Nilai LR": r.lrScore !== null ? r.lrScore.toFixed(1) : "–",
@@ -380,7 +382,20 @@ function DetailModalContent({ row }: { row: RekapRow }) {
 const staticColumns: ColumnDef<RekapRow>[] = [
   { accessorKey: "kelas", header: "Kelas" },
   { accessorKey: "nim", header: "NIM" },
-  { accessorKey: "name", header: "Nama" },
+  {
+    accessorKey: "name",
+    header: "Nama",
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        <span>{row.original.name}</span>
+        {row.original.isRetake && (
+          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 shrink-0">
+            Mengulang
+          </span>
+        )}
+      </div>
+    ),
+  },
   { accessorKey: "prodi", header: "Prodi" },
   {
     accessorKey: "status",
@@ -529,7 +544,14 @@ export function RekapTable({ rows }: { rows: RekapRow[] }) {
       >
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedRow?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedRow?.name}
+              {selectedRow?.isRetake && (
+                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                  Mengulang
+                </span>
+              )}
+            </DialogTitle>
             <DialogDescription>
               {selectedRow?.nim} · Kelas {selectedRow?.kelas} · {selectedRow?.prodi}
             </DialogDescription>

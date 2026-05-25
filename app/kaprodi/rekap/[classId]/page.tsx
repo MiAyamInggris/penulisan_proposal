@@ -1,19 +1,38 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
+import { getMyProdi } from "@/lib/kaprodi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RekapTable } from "./rekap-table";
+import { RekapTable } from "@/app/dosen-kelas/nilai/rekap-table";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 
-export default async function NilaiRekapPage() {
+export default async function KaprodiRekapClassPage({
+  params,
+}: {
+  params: Promise<{ classId: string }>;
+}) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session || !session.user.isKaprodi) redirect("/login");
 
-  const myClasses = await prisma.class.findMany({
-    where: { dosenKelasId: session.user.id },
+  const prodi = await getMyProdi(session.user.id);
+  if (!prodi) redirect("/dosen-select-role");
+
+  const { classId } = await params;
+
+  const targetClass = await prisma.class.findUnique({
+    where: { id: classId },
     select: {
       id: true,
+      code: true,
+      name: true,
+      semester: true,
+      academicYear: true,
+      programId: true,
       program: {
         select: {
+          id: true,
+          code: true,
           literatureReviewPct: true,
           bimbinganPct: true,
           deskEvaluationPct: true,
@@ -22,11 +41,14 @@ export default async function NilaiRekapPage() {
       },
     },
   });
-  const myClassIds = myClasses.map((c) => c.id);
-  const programByClassId = Object.fromEntries(myClasses.map((c) => [c.id, c.program]));
+
+  if (!targetClass) notFound();
+  if (targetClass.programId !== prodi.id) redirect("/kaprodi/rekap");
+
+  const program = targetClass.program;
 
   const enrollments = await prisma.classEnrollment.findMany({
-    where: { classId: { in: myClassIds }, isActive: true },
+    where: { classId, isActive: true },
     include: {
       student: { select: { id: true, name: true, identifier: true } },
       class: { select: { id: true, code: true, program: { select: { code: true } } } },
@@ -36,20 +58,23 @@ export default async function NilaiRekapPage() {
           deskEvaluation: { include: { evaluator: { select: { name: true } } } },
           nilaiBimbingan: { include: { pembimbing: { select: { name: true } } } },
           nilaiLiteratureReview: { include: { pembimbing: { select: { name: true } } } },
-          seminar: { include: { nilaiPresentasi: { include: { pembimbing: { select: { name: true } } } } } },
+          seminar: {
+            include: {
+              nilaiPresentasi: { include: { pembimbing: { select: { name: true } } } },
+            },
+          },
         },
       },
     },
-    orderBy: [{ class: { code: "asc" } }, { student: { name: "asc" } }],
+    orderBy: { student: { name: "asc" } },
   });
 
-  // "Mengulang": student has a FAILED final grade in any enrollment NOT in the current view
-  const currentEnrollmentIds = enrollments.map((e) => e.id);
-  const studentIds = [...new Set(enrollments.map((e) => e.studentId))];
+  // "Mengulang": student has a FAILED final grade in any OTHER class
+  const studentIds = enrollments.map((e) => e.student.id);
   const failedElsewhere = await prisma.classEnrollment.findMany({
     where: {
       studentId: { in: studentIds },
-      id: { notIn: currentEnrollmentIds },
+      classId: { not: classId },
       proposal: { finalGrade: { passed: false } },
     },
     select: { studentId: true },
@@ -63,33 +88,65 @@ export default async function NilaiRekapPage() {
 
   const rows = enrollments.map((e) => {
     const p = e.proposal;
-    const program = programByClassId[e.class.id];
-
-    // Mirror the grade-engine rule: a component score is only considered
-    // complete when ALL assigned pembimbing have submitted.
     const expectedPembimbingCount =
       (p?.supervisor1AssignedId ? 1 : 0) + (p?.supervisor2AssignedId ? 1 : 0);
 
     const bimbinganScore =
       expectedPembimbingCount > 0 &&
       (p?.nilaiBimbingan.length ?? 0) >= expectedPembimbingCount
-        ? avg(p!.nilaiBimbingan.map((n) => n.pemilihanTema + n.researchQuestion + n.studiLiteratur1 + n.studiLiteratur2 + n.rencanaImplementasi + n.kemandirian + n.prosesBimbingan))
+        ? avg(
+            p!.nilaiBimbingan.map(
+              (n) =>
+                n.pemilihanTema +
+                n.researchQuestion +
+                n.studiLiteratur1 +
+                n.studiLiteratur2 +
+                n.rencanaImplementasi +
+                n.kemandirian +
+                n.prosesBimbingan
+            )
+          )
         : (p?.finalGrade?.bimbinganScore ?? null);
 
     const lrScore =
       expectedPembimbingCount > 0 &&
       (p?.nilaiLiteratureReview.length ?? 0) >= expectedPembimbingCount
-        ? avg(p!.nilaiLiteratureReview.map((n) => n.kualitasPustaka + n.kontenRumusan + n.analisisTujuan + n.kelengkapanKajian + n.kelebihanKekurangan + n.relasiTeori))
+        ? avg(
+            p!.nilaiLiteratureReview.map(
+              (n) =>
+                n.kualitasPustaka +
+                n.kontenRumusan +
+                n.analisisTujuan +
+                n.kelengkapanKajian +
+                n.kelebihanKekurangan +
+                n.relasiTeori
+            )
+          )
         : (p?.finalGrade?.lrScore ?? null);
 
     const de = p?.deskEvaluation ?? null;
-    const deRaw = de ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode : null;
-    const deScore = de ? (de.isLate ? Math.min(deRaw!, 51) : deRaw) : (p?.finalGrade?.deScore ?? null);
+    const deRaw = de
+      ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode
+      : null;
+    const deScore = de
+      ? de.isLate
+        ? Math.min(deRaw!, 51)
+        : deRaw
+      : (p?.finalGrade?.deScore ?? null);
 
     const presentasiScore =
       expectedPembimbingCount > 0 &&
       (p?.seminar?.nilaiPresentasi.length ?? 0) >= expectedPembimbingCount
-        ? avg(p!.seminar!.nilaiPresentasi.map((n) => n.latarBelakangScore + n.teoriPendukungScore + n.toolsPemodelanScore + n.pemaparanScore + n.komunikasiScore))
+        ? avg(
+            p!.seminar!.nilaiPresentasi.map(
+              (n) =>
+                n.latarBelakangScore +
+                n.teoriPendukungScore +
+                n.toolsPemodelanScore +
+                n.pemaparanScore +
+                n.komunikasiScore
+            )
+          )
         : (p?.finalGrade?.presentasiScore ?? null);
 
     let weightedTotal = p?.finalGrade?.weightedTotal ?? null;
@@ -101,8 +158,7 @@ export default async function NilaiRekapPage() {
       lrScore !== null &&
       bimbinganScore !== null &&
       deScore !== null &&
-      presentasiScore !== null &&
-      program
+      presentasiScore !== null
     ) {
       weightedTotal =
         (lrScore * program.literatureReviewPct) / 100 +
@@ -135,15 +191,13 @@ export default async function NilaiRekapPage() {
       gradeIndex,
       passed,
       isLate: de?.isLate ?? false,
-      isRetake: retakeStudentIds.has(e.studentId),
-      weights: program
-        ? {
-            bimbinganPct: program.bimbinganPct,
-            lrPct: program.literatureReviewPct,
-            dePct: program.deskEvaluationPct,
-            presentasiPct: program.presentasiPct,
-          }
-        : null,
+      isRetake: retakeStudentIds.has(e.student.id),
+      weights: {
+        bimbinganPct: program.bimbinganPct,
+        lrPct: program.literatureReviewPct,
+        dePct: program.deskEvaluationPct,
+        presentasiPct: program.presentasiPct,
+      },
       detail: {
         nilaiBimbingan: (p?.nilaiBimbingan ?? []).map((n) => ({
           pembimbingName: n.pembimbing.name,
@@ -192,14 +246,24 @@ export default async function NilaiRekapPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Rekap Nilai</h1>
+        <Link
+          href="/kaprodi/rekap"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-2"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Kembali ke Daftar Kelas
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900">{targetClass.code}</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Nilai seluruh mahasiswa di kelas Anda
+          {targetClass.semester} / {targetClass.academicYear} ·{" "}
+          <span className="font-medium text-gray-700">
+            {prodi.name} ({prodi.code})
+          </span>
         </p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Tabel Rekap Nilai</CardTitle>
+          <CardTitle>Rekap Nilai</CardTitle>
         </CardHeader>
         <CardContent>
           <RekapTable rows={rows} />

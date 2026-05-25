@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getMyProdi } from "@/lib/kaprodi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RekapTable } from "@/app/dosen-kelas/nilai/rekap-table";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
 export default async function KaprodiRekapPage() {
   const session = await auth();
@@ -14,166 +16,62 @@ export default async function KaprodiRekapPage() {
 
   const classes = await prisma.class.findMany({
     where: { program: { id: prodi.id } },
+    orderBy: [{ academicYear: "desc" }, { code: "asc" }],
     select: {
       id: true,
-      program: {
+      code: true,
+      name: true,
+      semester: true,
+      academicYear: true,
+      enrollments: {
+        where: { isActive: true },
         select: {
-          literatureReviewPct: true,
-          bimbinganPct: true,
-          deskEvaluationPct: true,
-          presentasiPct: true,
+          proposal: {
+            select: {
+              status: true,
+              finalGrade: { select: { passed: true, weightedTotal: true } },
+            },
+          },
         },
       },
     },
   });
-  const classIds = classes.map((c) => c.id);
-  const programByClassId = Object.fromEntries(classes.map((c) => [c.id, c.program]));
 
-  const enrollments = await prisma.classEnrollment.findMany({
-    where: { classId: { in: classIds }, isActive: true },
-    include: {
-      student: { select: { name: true, identifier: true } },
-      class: { select: { id: true, code: true, program: { select: { code: true } } } },
-      proposal: {
-        include: {
-          finalGrade: true,
-          deskEvaluation: { include: { evaluator: { select: { name: true } } } },
-          nilaiBimbingan: { include: { pembimbing: { select: { name: true } } } },
-          nilaiLiteratureReview: { include: { pembimbing: { select: { name: true } } } },
-          seminar: { include: { nilaiPresentasi: { include: { pembimbing: { select: { name: true } } } } } },
-        },
-      },
-    },
-    orderBy: [{ class: { code: "asc" } }, { student: { name: "asc" } }],
-  });
+  const classRows = classes.map((c) => {
+    const total = c.enrollments.length;
+    let lulus = 0;
+    let tidakLulus = 0;
+    let seminarProgress = 0;
 
-  function avg(values: number[]): number | null {
-    if (!values.length) return null;
-    return values.reduce((a, b) => a + b, 0) / values.length;
-  }
+    for (const e of c.enrollments) {
+      const fg = e.proposal?.finalGrade;
+      const status = e.proposal?.status;
 
-  const rows = enrollments.map((e) => {
-    const p = e.proposal;
-    const program = programByClassId[e.class.id];
+      if (fg?.weightedTotal !== null && fg?.weightedTotal !== undefined) {
+        if (fg.passed) lulus++;
+        else tidakLulus++;
+      }
 
-    const expectedPembimbingCount =
-      (p?.supervisor1AssignedId ? 1 : 0) + (p?.supervisor2AssignedId ? 1 : 0);
-
-    const bimbinganScore =
-      expectedPembimbingCount > 0 &&
-      (p?.nilaiBimbingan.length ?? 0) >= expectedPembimbingCount
-        ? avg(p!.nilaiBimbingan.map((n) => n.pemilihanTema + n.researchQuestion + n.studiLiteratur1 + n.studiLiteratur2 + n.rencanaImplementasi + n.kemandirian + n.prosesBimbingan))
-        : (p?.finalGrade?.bimbinganScore ?? null);
-
-    const lrScore =
-      expectedPembimbingCount > 0 &&
-      (p?.nilaiLiteratureReview.length ?? 0) >= expectedPembimbingCount
-        ? avg(p!.nilaiLiteratureReview.map((n) => n.kualitasPustaka + n.kontenRumusan + n.analisisTujuan + n.kelengkapanKajian + n.kelebihanKekurangan + n.relasiTeori))
-        : (p?.finalGrade?.lrScore ?? null);
-
-    const de = p?.deskEvaluation ?? null;
-    const deRaw = de ? de.latarBelakang + de.formulasiMasalah + de.teoriPendukung + de.ideMetode : null;
-    const deScore = de ? (de.isLate ? Math.min(deRaw!, 51) : deRaw) : (p?.finalGrade?.deScore ?? null);
-
-    const presentasiScore =
-      expectedPembimbingCount > 0 &&
-      (p?.seminar?.nilaiPresentasi.length ?? 0) >= expectedPembimbingCount
-        ? avg(p!.seminar!.nilaiPresentasi.map((n) => n.latarBelakangScore + n.teoriPendukungScore + n.toolsPemodelanScore + n.pemaparanScore + n.komunikasiScore))
-        : (p?.finalGrade?.presentasiScore ?? null);
-
-    let weightedTotal = p?.finalGrade?.weightedTotal ?? null;
-    let gradeIndex = p?.finalGrade?.gradeIndex ?? null;
-    let passed = p?.finalGrade?.passed ?? null;
-
-    if (
-      weightedTotal === null &&
-      lrScore !== null &&
-      bimbinganScore !== null &&
-      deScore !== null &&
-      presentasiScore !== null &&
-      program
-    ) {
-      weightedTotal =
-        (lrScore * program.literatureReviewPct) / 100 +
-        (bimbinganScore * program.bimbinganPct) / 100 +
-        (deScore * program.deskEvaluationPct) / 100 +
-        (presentasiScore * program.presentasiPct) / 100;
-      if (weightedTotal > 85) gradeIndex = "A";
-      else if (weightedTotal > 75) gradeIndex = "AB";
-      else if (weightedTotal > 65) gradeIndex = "B";
-      else if (weightedTotal > 60) gradeIndex = "BC";
-      else if (weightedTotal > 50) gradeIndex = "C";
-      else if (weightedTotal > 40) gradeIndex = "D";
-      else gradeIndex = "E";
-      passed = weightedTotal > 50;
+      if (
+        status &&
+        ["SEMINAR_REGISTERED", "SEMINAR_COMPLETED", "COMPLETED"].includes(status)
+      ) {
+        seminarProgress++;
+      }
     }
 
+    const graded = lulus + tidakLulus;
     return {
-      id: e.id,
-      nim: e.student.identifier,
-      name: e.student.name,
-      kelas: e.class.code,
-      prodi: e.class.program.code,
-      status: p?.status ?? "ENROLLED",
-      proposalId: p?.id ?? null,
-      lrScore,
-      bimbinganScore,
-      deScore,
-      presentasiScore,
-      weightedTotal,
-      gradeIndex,
-      passed,
-      isLate: de?.isLate ?? false,
-      weights: program
-        ? {
-            bimbinganPct: program.bimbinganPct,
-            lrPct: program.literatureReviewPct,
-            dePct: program.deskEvaluationPct,
-            presentasiPct: program.presentasiPct,
-          }
-        : null,
-      detail: {
-        nilaiBimbingan: (p?.nilaiBimbingan ?? []).map((n) => ({
-          pembimbingName: n.pembimbing.name,
-          pemilihanTema: n.pemilihanTema,
-          researchQuestion: n.researchQuestion,
-          studiLiteratur1: n.studiLiteratur1,
-          studiLiteratur2: n.studiLiteratur2,
-          rencanaImplementasi: n.rencanaImplementasi,
-          kemandirian: n.kemandirian,
-          prosesBimbingan: n.prosesBimbingan,
-          notes: n.notes ?? null,
-        })),
-        nilaiLiteratureReview: (p?.nilaiLiteratureReview ?? []).map((n) => ({
-          pembimbingName: n.pembimbing.name,
-          kualitasPustaka: n.kualitasPustaka,
-          kontenRumusan: n.kontenRumusan,
-          analisisTujuan: n.analisisTujuan,
-          kelengkapanKajian: n.kelengkapanKajian,
-          kelebihanKekurangan: n.kelebihanKekurangan,
-          relasiTeori: n.relasiTeori,
-          catatan: n.catatan ?? null,
-        })),
-        deskEvaluation: de
-          ? {
-              evaluatorName: de.evaluator.name,
-              latarBelakang: de.latarBelakang,
-              formulasiMasalah: de.formulasiMasalah,
-              teoriPendukung: de.teoriPendukung,
-              ideMetode: de.ideMetode,
-              catatanReviewer: de.catatanReviewer ?? null,
-              isLate: de.isLate,
-            }
-          : null,
-        nilaiPresentasi: (p?.seminar?.nilaiPresentasi ?? []).map((n) => ({
-          pembimbingName: n.pembimbing.name,
-          latarBelakangScore: n.latarBelakangScore,
-          teoriPendukungScore: n.teoriPendukungScore,
-          toolsPemodelanScore: n.toolsPemodelanScore,
-          pemaparanScore: n.pemaparanScore,
-          komunikasiScore: n.komunikasiScore,
-        })),
-      },
+      id: c.id,
+      code: c.code,
+      name: c.name,
+      semester: c.semester,
+      academicYear: c.academicYear,
+      total,
+      lulus,
+      tidakLulus,
+      seminarProgress,
+      pct: graded > 0 ? (lulus / graded) * 100 : null,
     };
   });
 
@@ -182,15 +80,91 @@ export default async function KaprodiRekapPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Rekap Nilai</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Nilai seluruh mahasiswa Program Studi {prodi.name} ({prodi.code})
+          Pilih kelas untuk melihat rekap nilai mahasiswa —{" "}
+          <span className="font-medium text-gray-700">{prodi.name} ({prodi.code})</span>
         </p>
       </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Tabel Rekap Nilai</CardTitle>
+          <CardTitle>Daftar Kelas</CardTitle>
         </CardHeader>
         <CardContent>
-          <RekapTable rows={rows} />
+          {classRows.length === 0 ? (
+            <p className="text-sm text-gray-500">Belum ada kelas di program studi ini.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="py-2 pr-4 font-medium">Kelas</th>
+                    <th className="py-2 pr-4 font-medium">Semester / TA</th>
+                    <th className="py-2 pr-4 font-medium text-right">Total</th>
+                    <th className="py-2 pr-4 font-medium text-right">Lulus</th>
+                    <th className="py-2 pr-4 font-medium text-right">Tdk Lulus</th>
+                    <th className="py-2 pr-4 font-medium text-right">Seminar</th>
+                    <th className="py-2 pr-4 font-medium text-right">% Lulus</th>
+                    <th className="py-2 font-medium" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {classRows.map((c) => (
+                    <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50 group">
+                      <td className="py-2.5 pr-4">
+                        <span className="font-medium">{c.code}</span>
+                        {c.name && (
+                          <span className="ml-2 text-xs text-gray-400">{c.name}</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 pr-4 text-gray-500">
+                        {c.semester} / {c.academicYear}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right font-semibold">{c.total}</td>
+                      <td className="py-2.5 pr-4 text-right text-green-700 font-semibold">
+                        {c.lulus}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right text-red-700 font-semibold">
+                        {c.tidakLulus}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right text-blue-600">
+                        {c.seminarProgress > 0 ? (
+                          c.seminarProgress
+                        ) : (
+                          <span className="text-gray-400">–</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right">
+                        {c.pct !== null ? (
+                          <Badge
+                            className={
+                              c.pct >= 75
+                                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                : c.pct >= 50
+                                ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                : "bg-red-100 text-red-800 hover:bg-red-100"
+                            }
+                          >
+                            {c.pct.toFixed(1)}%
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">–</span>
+                        )}
+                      </td>
+                      <td className="py-2.5">
+                        <Link
+                          href={`/kaprodi/rekap/${c.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#C8102E] hover:text-[#a00d24] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+                        >
+                          Lihat Rekap
+                          <ChevronRight className="h-3 w-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
