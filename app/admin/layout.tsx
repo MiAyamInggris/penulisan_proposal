@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Crown,
   Layers,
+  BookMarked,
 } from "lucide-react";
 
 const navItems = [
@@ -53,6 +54,11 @@ const navItems = [
     href: "/admin/ketua-kk",
     label: "Kuota Dosen",
     icon: <Crown className="h-4 w-4" />,
+  },
+  {
+    href: "/admin/kaprodi",
+    label: "Kaprodi",
+    icon: <BookMarked className="h-4 w-4" />,
   },
   {
     href: "/account/settings",

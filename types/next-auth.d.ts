@@ -9,6 +9,7 @@ declare module "next-auth" {
       role: string;
       identifier: string;
       isKetua: boolean;
+      isKaprodi: boolean;
     };
   }
 }

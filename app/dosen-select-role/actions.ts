@@ -33,3 +33,7 @@ export async function clearDosenRole() {
 export async function selectKetuaKKRole() {
   redirect("/ketua-kk/dashboard");
 }
+
+export async function selectKaprodiRole() {
+  redirect("/kaprodi/dashboard");
+}

@@ -66,6 +66,7 @@ model User {
   identifier         String
   isActive             Boolean  @default(true)
   isKetua              Boolean  @default(false)
+  isKaprodi            Boolean  @default(false)
   maxBimbinganQuota    Int      @default(5)
   kodeDosen            String?
   kelompokKeahlianId   String?
@@ -88,6 +89,7 @@ model User {
 
   kelompokKeahlian KelompokKeahlian? @relation("KKAnggota", fields: [kelompokKeahlianId], references: [id])
   ketuaDiKK        KelompokKeahlian? @relation("KKKetua")
+  kaprodiDiProdi   Program?          @relation("KaprodiProgram")
 }
 
 model Program {
@@ -98,8 +100,10 @@ model Program {
   bimbinganPct        Float
   deskEvaluationPct   Float
   presentasiPct       Float
+  kaprodiId           String?   @unique
 
   classes Class[]
+  kaprodi User?  @relation("KaprodiProgram", fields: [kaprodiId], references: [id])
 }
 
 model Class {

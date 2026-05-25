@@ -17,6 +17,7 @@ import {
   CalendarPlus,
   Settings,
   Crown,
+  BookMarked,
 } from "lucide-react";
 
 const koordinatorNavItems = [
@@ -140,6 +141,14 @@ export default async function DosenLayout({
       href: "/ketua-kk/dashboard",
       label: "Panel Ketua KK",
       icon: <Crown className="h-4 w-4 text-yellow-500" />,
+    });
+  }
+
+  if (session.user.isKaprodi) {
+    navItems.push({
+      href: "/kaprodi/dashboard",
+      label: "Panel Kaprodi",
+      icon: <BookMarked className="h-4 w-4 text-indigo-500" />,
     });
   }
 
