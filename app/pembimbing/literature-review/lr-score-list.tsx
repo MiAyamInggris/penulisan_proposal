@@ -51,6 +51,8 @@ export type LRProposalRow = {
     student: { name: string; identifier: string };
     class: { code: string };
   };
+  isMengulang: boolean;
+  semesterLabel: string;
   myScore: NilaiLR | null;
   otherPembimbing: OtherPembimbingData | null;
 };
@@ -166,7 +168,7 @@ export function LRScoreList({ proposals }: { proposals: LRProposalRow[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (proposals.length === 0) {
-    return <p className="text-gray-500">Belum ada mahasiswa yang ditugaskan kepada Anda.</p>;
+    return <p className="text-gray-500">Belum ada mahasiswa yang ditugaskan kepada Anda pada semester ini.</p>;
   }
 
   return (
@@ -182,9 +184,15 @@ export function LRScoreList({ proposals }: { proposals: LRProposalRow[] }) {
             <CardContent className="pt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{p.enrollment.class.code}</span>
                     <span className="font-medium">{p.enrollment.student.name}</span>
+                    <span className="text-xs text-gray-500">{p.enrollment.student.identifier}</span>
+                    {p.isMengulang && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                        Mengulang
+                      </span>
+                    )}
                   </div>
                   {total !== null && (
                     <p className="text-sm mt-1">
@@ -211,22 +219,23 @@ export function LRScoreList({ proposals }: { proposals: LRProposalRow[] }) {
         );
       })}
 
-      {openId && (
-        <Dialog open={!!openId} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                Literature Review – {proposals.find((p) => p.id === openId)?.enrollment.student.name}
-              </DialogTitle>
-            </DialogHeader>
-            <LRForm
-              proposalId={openId}
-              existing={proposals.find((p) => p.id === openId)?.myScore ?? null}
-              onClose={() => setOpenId(null)}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+      {openId && (() => {
+        const p = proposals.find((x) => x.id === openId);
+        if (!p) return null;
+        return (
+          <Dialog open={true} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Literature Review – {p.enrollment.student.name}</DialogTitle>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {p.enrollment.class.code} | {p.semesterLabel}
+                </p>
+              </DialogHeader>
+              <LRForm proposalId={p.id} existing={p.myScore} onClose={() => setOpenId(null)} />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

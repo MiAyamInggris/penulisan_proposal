@@ -55,6 +55,8 @@ export type BimbinganProposalRow = {
     class: { code: string };
   };
   bimbinganSessions: { id: string; sessionNumber: number }[];
+  isMengulang: boolean;
+  semesterLabel: string;
   myScore: NilaiBimbingan | null;
   otherPembimbing: OtherPembimbingData | null;
 };
@@ -174,7 +176,7 @@ export function BimbinganScoreList({ proposals }: { proposals: BimbinganProposal
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (proposals.length === 0) {
-    return <p className="text-gray-500">Belum ada mahasiswa yang ditugaskan kepada Anda.</p>;
+    return <p className="text-gray-500">Belum ada mahasiswa yang ditugaskan kepada Anda pada semester ini.</p>;
   }
 
   return (
@@ -190,10 +192,15 @@ export function BimbinganScoreList({ proposals }: { proposals: BimbinganProposal
             <CardContent className="pt-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{p.enrollment.class.code}</span>
                     <span className="font-medium">{p.enrollment.student.name}</span>
                     <span className="text-xs text-gray-500">{p.enrollment.student.identifier}</span>
+                    {p.isMengulang && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                        Mengulang
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500">Sesi bimbingan: {p.bimbinganSessions.length}</p>
                   {total !== null && (
@@ -219,22 +226,23 @@ export function BimbinganScoreList({ proposals }: { proposals: BimbinganProposal
         );
       })}
 
-      {openId && (
-        <Dialog open={!!openId} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                Nilai Bimbingan – {proposals.find((p) => p.id === openId)?.enrollment.student.name}
-              </DialogTitle>
-            </DialogHeader>
-            <ScoreForm
-              proposal={proposals.find((p) => p.id === openId)!}
-              existing={proposals.find((p) => p.id === openId)?.myScore ?? null}
-              onClose={() => setOpenId(null)}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+      {openId && (() => {
+        const p = proposals.find((x) => x.id === openId);
+        if (!p) return null;
+        return (
+          <Dialog open={true} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Nilai Bimbingan – {p.enrollment.student.name}</DialogTitle>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {p.enrollment.class.code} | {p.semesterLabel}
+                </p>
+              </DialogHeader>
+              <ScoreForm proposal={p} existing={p.myScore} onClose={() => setOpenId(null)} />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

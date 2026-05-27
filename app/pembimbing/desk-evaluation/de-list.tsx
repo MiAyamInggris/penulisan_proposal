@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { scoreDeskEvaluation } from "./actions";
 import { Pencil } from "lucide-react";
 
-type Proposal = {
+export type DEProposalRow = {
   id: string;
   titleId: string;
   status: string;
@@ -28,6 +28,8 @@ type Proposal = {
     isLate: boolean;
     catatanReviewer: string | null;
   } | null;
+  isMengulang: boolean;
+  semesterLabel: string;
 };
 
 const CRITERIA = [
@@ -37,7 +39,7 @@ const CRITERIA = [
   { name: "ideMetode", label: "Ide / Metode Penyelesaian Masalah", max: 15 },
 ];
 
-function DEForm({ proposal, onClose }: { proposal: Proposal; onClose: () => void }) {
+function DEForm({ proposal, onClose }: { proposal: DEProposalRow; onClose: () => void }) {
   const de = proposal.deskEvaluation;
   const [scores, setScores] = useState<Record<string, number>>({
     latarBelakang: de?.latarBelakang ?? 0,
@@ -89,9 +91,7 @@ function DEForm({ proposal, onClose }: { proposal: Proposal; onClose: () => void
       ))}
       <div className="p-3 bg-gray-50 rounded-lg flex justify-between">
         <span className="text-sm font-medium text-gray-700">Total Nilai</span>
-        <span className="text-lg font-bold text-gray-900">
-          {rawTotal.toFixed(1)}
-        </span>
+        <span className="text-lg font-bold text-gray-900">{rawTotal.toFixed(1)}</span>
       </div>
       <div className="space-y-1">
         <Label htmlFor="catatanReviewer">Catatan Reviewer / Usulan Perbaikan</Label>
@@ -110,11 +110,11 @@ function DEForm({ proposal, onClose }: { proposal: Proposal; onClose: () => void
   );
 }
 
-export function DEList({ proposals }: { proposals: Proposal[] }) {
+export function DEList({ proposals }: { proposals: DEProposalRow[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (proposals.length === 0) {
-    return <p className="text-gray-500">Belum ada proposal yang ditugaskan kepada Anda untuk DE.</p>;
+    return <p className="text-gray-500">Belum ada proposal yang ditugaskan kepada Anda untuk DE pada semester ini.</p>;
   }
 
   return (
@@ -135,14 +135,17 @@ export function DEList({ proposals }: { proposals: Proposal[] }) {
                     <span className="font-medium text-gray-900">{p.enrollment.student.name}</span>
                     <span className="text-xs text-gray-500">{p.enrollment.student.identifier}</span>
                     <StatusBadge status={p.status} type="proposal" />
+                    {p.isMengulang && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                        Mengulang
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-1">{p.titleId}</p>
                   {de && (
                     <p className="text-sm">
                       Nilai DE:{" "}
-                      <span className="font-bold text-gray-900">
-                        {finalScore?.toFixed(1)}
-                      </span>
+                      <span className="font-bold text-gray-900">{finalScore?.toFixed(1)}</span>
                     </p>
                   )}
                 </div>
@@ -161,18 +164,23 @@ export function DEList({ proposals }: { proposals: Proposal[] }) {
         );
       })}
 
-      {openId && (
-        <Dialog open={!!openId} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                Desk Evaluation – {proposals.find((p) => p.id === openId)?.enrollment.student.name}
-              </DialogTitle>
-            </DialogHeader>
-            <DEForm proposal={proposals.find((p) => p.id === openId)!} onClose={() => setOpenId(null)} />
-          </DialogContent>
-        </Dialog>
-      )}
+      {openId && (() => {
+        const p = proposals.find((x) => x.id === openId);
+        if (!p) return null;
+        return (
+          <Dialog open={true} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Desk Evaluation – {p.enrollment.student.name}</DialogTitle>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {p.enrollment.class.code} | {p.semesterLabel}
+                </p>
+              </DialogHeader>
+              <DEForm proposal={p} onClose={() => setOpenId(null)} />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }

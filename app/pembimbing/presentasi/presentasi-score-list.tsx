@@ -55,6 +55,8 @@ export type PresentasiProposalRow = {
     scheduledDate: Date | null;
     location: string | null;
   } | null;
+  isMengulang: boolean;
+  semesterLabel: string;
   myScore: NilaiPresentasi | null;
   otherPembimbing: OtherPembimbingData | null;
 };
@@ -153,7 +155,7 @@ export function PresentasiScoreList({ proposals }: { proposals: PresentasiPropos
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (proposals.length === 0) {
-    return <p className="text-gray-500">Tidak ada mahasiswa dengan seminar terjadwal.</p>;
+    return <p className="text-gray-500">Tidak ada mahasiswa dengan seminar terjadwal pada semester ini.</p>;
   }
 
   return (
@@ -169,17 +171,28 @@ export function PresentasiScoreList({ proposals }: { proposals: PresentasiPropos
             <CardContent className="pt-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{p.enrollment.class.code}</span>
                     <span className="font-medium">{p.enrollment.student.name}</span>
+                    <span className="text-xs text-gray-500">{p.enrollment.student.identifier}</span>
+                    {p.isMengulang && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                        Mengulang
+                      </span>
+                    )}
                   </div>
                   {p.seminar && (
                     <p className="text-xs text-gray-500">
-                      Seminar: {p.seminar.scheduledDate ? format(new Date(p.seminar.scheduledDate), "dd MMM yyyy HH:mm", { locale: idLocale }) : "Belum dijadwalkan"}
+                      Seminar:{" "}
+                      {p.seminar.scheduledDate
+                        ? format(new Date(p.seminar.scheduledDate), "dd MMM yyyy HH:mm", { locale: idLocale })
+                        : "Belum dijadwalkan"}
                       {p.seminar.location && ` – ${p.seminar.location}`}
                     </p>
                   )}
-                  {total !== null && <p className="text-sm">Nilai: <span className="font-bold">{total.toFixed(1)}/100</span></p>}
+                  {total !== null && (
+                    <p className="text-sm">Nilai: <span className="font-bold">{total.toFixed(1)}/100</span></p>
+                  )}
                 </div>
                 {p.seminar && (
                   <Button
@@ -202,28 +215,28 @@ export function PresentasiScoreList({ proposals }: { proposals: PresentasiPropos
         );
       })}
 
-      {openId && (
-        <Dialog open={!!openId} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                Nilai Presentasi – {proposals.find((p) => p.id === openId)?.enrollment.student.name}
-              </DialogTitle>
-            </DialogHeader>
-            {(() => {
-              const p = proposals.find((x) => x.id === openId);
-              return p?.seminar ? (
-                <PresentasiForm
-                  proposalId={p.id}
-                  seminarId={p.seminar.id}
-                  existing={p.myScore}
-                  onClose={() => setOpenId(null)}
-                />
-              ) : null;
-            })()}
-          </DialogContent>
-        </Dialog>
-      )}
+      {openId && (() => {
+        const p = proposals.find((x) => x.id === openId);
+        if (!p?.seminar) return null;
+        return (
+          <Dialog open={true} onOpenChange={(v) => { if (!v) setOpenId(null); }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Nilai Presentasi – {p.enrollment.student.name}</DialogTitle>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {p.enrollment.class.code} | {p.semesterLabel}
+                </p>
+              </DialogHeader>
+              <PresentasiForm
+                proposalId={p.id}
+                seminarId={p.seminar.id}
+                existing={p.myScore}
+                onClose={() => setOpenId(null)}
+              />
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
