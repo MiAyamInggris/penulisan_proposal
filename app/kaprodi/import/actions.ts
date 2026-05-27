@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { getMyProdi } from "@/lib/kaprodi";
 import { computeFinalGrade } from "@/lib/grade-engine";
 import { logAudit } from "@/lib/audit";
@@ -55,8 +56,12 @@ export async function bulkImportHistorical(
     throw new Error("Tidak terautentikasi");
   }
 
-  const prodi = await getMyProdi(session.user.id);
+  const [prodi, kaprodiUser] = await Promise.all([
+    getMyProdi(session.user.id),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true } }),
+  ]);
   if (!prodi) throw new Error("Anda tidak memiliki Program Studi yang ditetapkan");
+  const kaprodiName = kaprodiUser?.name ?? "Kaprodi";
 
   // Validate class belongs to kaprodi's prodi
   const targetClass = await prisma.class.findUnique({
@@ -117,6 +122,7 @@ export async function bulkImportHistorical(
   const enrollmentByStudentId = new Map(currentEnrollments.map((e) => [e.studentId, e]));
 
   const seenNims = new Set<string>();
+  const scoreAuditEntries: Array<Prisma.AuditLogCreateManyInput> = [];
 
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 2;
@@ -310,71 +316,90 @@ export async function bulkImportHistorical(
 
       // --- Create per-pembimbing assessment records ---
 
+      const importBase = {
+        userId: session.user.id,
+        userRole: "KAPRODI",
+        action: "SCORE_CREATE",
+        entityType: "PROPOSAL",
+        entityId: proposalId!,
+        mahasiswaName: nama,
+        mahasiswaNim: nim,
+        classCode: targetClass.code,
+        importedBy: kaprodiName,
+        source: "BULK_IMPORT",
+      };
+
       // NilaiBimbingan (7 rubric fields, each = score / 7)
       if (sv1 && nilaiB1 !== null) {
         const perField = nilaiB1 / 7;
+        const fields = {
+          pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
+          studiLiteratur2: perField, rencanaImplementasi: perField,
+          kemandirian: perField, prosesBimbingan: perField,
+        };
         await prisma.nilaiBimbingan.upsert({
           where: { proposalId_pembimbingId: { proposalId: proposalId!, pembimbingId: sv1.id } },
-          update: {
-            pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
-            studiLiteratur2: perField, rencanaImplementasi: perField,
-            kemandirian: perField, prosesBimbingan: perField,
-          },
-          create: {
-            proposalId: proposalId!, pembimbingId: sv1.id,
-            pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
-            studiLiteratur2: perField, rencanaImplementasi: perField,
-            kemandirian: perField, prosesBimbingan: perField,
-          },
+          update: fields,
+          create: { proposalId: proposalId!, pembimbingId: sv1.id, ...fields },
+        });
+        scoreAuditEntries.push({
+          userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
+          entityType: importBase.entityType, entityId: importBase.entityId,
+          detail: { assessmentType: "NILAI_BIMBINGAN", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiB1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
         });
       }
       if (sv2 && nilaiB2 !== null) {
         const perField = nilaiB2 / 7;
+        const fields = {
+          pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
+          studiLiteratur2: perField, rencanaImplementasi: perField,
+          kemandirian: perField, prosesBimbingan: perField,
+        };
         await prisma.nilaiBimbingan.upsert({
           where: { proposalId_pembimbingId: { proposalId: proposalId!, pembimbingId: sv2.id } },
-          update: {
-            pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
-            studiLiteratur2: perField, rencanaImplementasi: perField,
-            kemandirian: perField, prosesBimbingan: perField,
-          },
-          create: {
-            proposalId: proposalId!, pembimbingId: sv2.id,
-            pemilihanTema: perField, researchQuestion: perField, studiLiteratur1: perField,
-            studiLiteratur2: perField, rencanaImplementasi: perField,
-            kemandirian: perField, prosesBimbingan: perField,
-          },
+          update: fields,
+          create: { proposalId: proposalId!, pembimbingId: sv2.id, ...fields },
+        });
+        scoreAuditEntries.push({
+          userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
+          entityType: importBase.entityType, entityId: importBase.entityId,
+          detail: { assessmentType: "NILAI_BIMBINGAN", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiB2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
         });
       }
 
       // NilaiLiteratureReview (6 rubric fields, each = score / 6)
       if (sv1 && nilaiLR1 !== null) {
         const perField = nilaiLR1 / 6;
+        const fields = {
+          kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
+          kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
+        };
         await prisma.nilaiLiteratureReview.upsert({
           where: { proposalId_pembimbingId: { proposalId: proposalId!, pembimbingId: sv1.id } },
-          update: {
-            kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
-            kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
-          },
-          create: {
-            proposalId: proposalId!, pembimbingId: sv1.id,
-            kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
-            kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
-          },
+          update: fields,
+          create: { proposalId: proposalId!, pembimbingId: sv1.id, ...fields },
+        });
+        scoreAuditEntries.push({
+          userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
+          entityType: importBase.entityType, entityId: importBase.entityId,
+          detail: { assessmentType: "NILAI_LR", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiLR1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
         });
       }
       if (sv2 && nilaiLR2 !== null) {
         const perField = nilaiLR2 / 6;
+        const fields = {
+          kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
+          kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
+        };
         await prisma.nilaiLiteratureReview.upsert({
           where: { proposalId_pembimbingId: { proposalId: proposalId!, pembimbingId: sv2.id } },
-          update: {
-            kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
-            kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
-          },
-          create: {
-            proposalId: proposalId!, pembimbingId: sv2.id,
-            kualitasPustaka: perField, kontenRumusan: perField, analisisTujuan: perField,
-            kelengkapanKajian: perField, kelebihanKekurangan: perField, relasiTeori: perField,
-          },
+          update: fields,
+          create: { proposalId: proposalId!, pembimbingId: sv2.id, ...fields },
+        });
+        scoreAuditEntries.push({
+          userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
+          entityType: importBase.entityType, entityId: importBase.entityId,
+          detail: { assessmentType: "NILAI_LR", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiLR2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
         });
       }
 
@@ -399,50 +424,55 @@ export async function bulkImportHistorical(
       // NilaiPresentasi (5 rubric fields, each = score / 5)
       if (seminarId && sv1 && nilaiP1 !== null) {
         const perField = nilaiP1 / 5;
+        const fields = {
+          latarBelakangScore: perField, teoriPendukungScore: perField,
+          toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
+        };
         await prisma.nilaiPresentasi.upsert({
           where: { seminarId_pembimbingId: { seminarId, pembimbingId: sv1.id } },
-          update: {
-            latarBelakangScore: perField, teoriPendukungScore: perField,
-            toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
-          },
-          create: {
-            seminarId, pembimbingId: sv1.id,
-            latarBelakangScore: perField, teoriPendukungScore: perField,
-            toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
-          },
+          update: fields,
+          create: { seminarId, pembimbingId: sv1.id, ...fields },
+        });
+        scoreAuditEntries.push({
+          userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
+          entityType: importBase.entityType, entityId: importBase.entityId,
+          detail: { assessmentType: "NILAI_PRESENTASI", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiP1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
         });
       }
       if (seminarId && sv2 && nilaiP2 !== null) {
         const perField = nilaiP2 / 5;
+        const fields = {
+          latarBelakangScore: perField, teoriPendukungScore: perField,
+          toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
+        };
         await prisma.nilaiPresentasi.upsert({
           where: { seminarId_pembimbingId: { seminarId, pembimbingId: sv2.id } },
-          update: {
-            latarBelakangScore: perField, teoriPendukungScore: perField,
-            toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
-          },
-          create: {
-            seminarId, pembimbingId: sv2.id,
-            latarBelakangScore: perField, teoriPendukungScore: perField,
-            toolsPemodelanScore: perField, pemaparanScore: perField, komunikasiScore: perField,
-          },
+          update: fields,
+          create: { seminarId, pembimbingId: sv2.id, ...fields },
+        });
+        scoreAuditEntries.push({
+          userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
+          entityType: importBase.entityType, entityId: importBase.entityId,
+          detail: { assessmentType: "NILAI_PRESENTASI", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiP2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
         });
       }
 
       // DeskEvaluation (4 rubric fields, each = score / 4); requires evaluator
       if (de && nilaiDE !== null) {
         const perField = nilaiDE / 4;
+        const fields = {
+          latarBelakang: perField, formulasiMasalah: perField,
+          teoriPendukung: perField, ideMetode: perField,
+        };
         await prisma.deskEvaluation.upsert({
           where: { proposalId: proposalId! },
-          update: {
-            evaluatorId: de.id, isLate: false,
-            latarBelakang: perField, formulasiMasalah: perField,
-            teoriPendukung: perField, ideMetode: perField,
-          },
-          create: {
-            proposalId: proposalId!, evaluatorId: de.id, isLate: false,
-            latarBelakang: perField, formulasiMasalah: perField,
-            teoriPendukung: perField, ideMetode: perField,
-          },
+          update: { evaluatorId: de.id, isLate: false, ...fields },
+          create: { proposalId: proposalId!, evaluatorId: de.id, isLate: false, ...fields },
+        });
+        scoreAuditEntries.push({
+          userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
+          entityType: importBase.entityType, entityId: importBase.entityId,
+          detail: { assessmentType: "DESK_EVALUATION", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: de.name, dosenRole: "DESK_EVALUATOR", isUpdate: false, previousTotal: null, newTotal: nilaiDE, previousFields: null, newFields: { ...fields, isLate: false }, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
         });
       }
 
@@ -464,7 +494,16 @@ export async function bulkImportHistorical(
   revalidatePath("/ketua-kk/alokasi-pembimbing");
   revalidatePath("/admin/audit-log");
 
-  // Write audit log entry
+  // Batch-insert per-score audit entries
+  if (scoreAuditEntries.length > 0) {
+    try {
+      await prisma.auditLog.createMany({ data: scoreAuditEntries });
+    } catch {
+      // Audit log failure must not break the import
+    }
+  }
+
+  // Write summary audit log entry
   await logAudit(
     session.user.id,
     "KAPRODI",

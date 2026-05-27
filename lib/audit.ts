@@ -7,7 +7,36 @@ export type AuditAction =
   | "REMOVE_KAPRODI"
   | "ASSIGN_PEMBIMBING_KK"
   | "KK_SYNC"
-  | "DOSEN_SYNC";
+  | "DOSEN_SYNC"
+  | "SCORE_CREATE"
+  | "SCORE_UPDATE";
+
+export type AssessmentType =
+  | "NILAI_BIMBINGAN"
+  | "NILAI_LR"
+  | "DESK_EVALUATION"
+  | "NILAI_PRESENTASI";
+
+export type DosenRole = "PEMBIMBING_1" | "PEMBIMBING_2" | "DESK_EVALUATOR";
+
+export interface ScoreAuditDetail {
+  assessmentType: AssessmentType;
+  proposalId: string;
+  mahasiswaName: string;
+  mahasiswaNim: string;
+  classCode: string;
+  /** Assessor name — same as user.name for manual entry; differs for bulk import */
+  dosenName?: string;
+  dosenRole: DosenRole | string;
+  isUpdate: boolean;
+  previousTotal: number | null;
+  newTotal: number;
+  previousFields: Record<string, number> | null;
+  newFields: Record<string, number>;
+  source: "MANUAL" | "BULK_IMPORT";
+  /** Set when source = BULK_IMPORT */
+  importedBy?: string;
+}
 
 export async function logAudit(
   userId: string,

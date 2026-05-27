@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { computeFinalGrade } from "@/lib/grade-engine";
+import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 
 export async function submitDeskEvaluation(data: {
@@ -18,12 +19,25 @@ export async function submitDeskEvaluation(data: {
     throw new Error("Unauthorized");
   }
 
-  const proposal = await prisma.proposal.findUnique({
-    where: { id: data.proposalId },
-    include: {
-      enrollment: { include: { class: { select: { deDeadline: true } } } },
-    },
-  });
+  const [proposal, existing] = await Promise.all([
+    prisma.proposal.findUnique({
+      where: { id: data.proposalId },
+      include: {
+        enrollment: {
+          include: {
+            class: { select: { deDeadline: true, code: true } },
+            student: { select: { name: true, identifier: true } },
+          },
+        },
+      },
+    }),
+    prisma.deskEvaluation.findUnique({
+      where: { proposalId: data.proposalId },
+      select: {
+        latarBelakang: true, formulasiMasalah: true, teoriPendukung: true, ideMetode: true,
+      },
+    }),
+  ]);
 
   if (!proposal) throw new Error("Proposal not found");
   if (proposal.deskEvaluatorId !== session.user.id) {
@@ -34,27 +48,17 @@ export async function submitDeskEvaluation(data: {
     ? new Date() > proposal.enrollment.class.deDeadline
     : false;
 
+  const scoreFields = {
+    latarBelakang: data.latarBelakang,
+    formulasiMasalah: data.formulasiMasalah,
+    teoriPendukung: data.teoriPendukung,
+    ideMetode: data.ideMetode,
+  };
+
   await prisma.deskEvaluation.upsert({
     where: { proposalId: data.proposalId },
-    update: {
-      latarBelakang: data.latarBelakang,
-      formulasiMasalah: data.formulasiMasalah,
-      teoriPendukung: data.teoriPendukung,
-      ideMetode: data.ideMetode,
-      catatanReviewer: data.catatanReviewer,
-      isLate,
-      evaluatorId: session.user.id,
-    },
-    create: {
-      proposalId: data.proposalId,
-      evaluatorId: session.user.id,
-      latarBelakang: data.latarBelakang,
-      formulasiMasalah: data.formulasiMasalah,
-      teoriPendukung: data.teoriPendukung,
-      ideMetode: data.ideMetode,
-      catatanReviewer: data.catatanReviewer,
-      isLate,
-    },
+    update: { ...scoreFields, catatanReviewer: data.catatanReviewer, isLate, evaluatorId: session.user.id },
+    create: { proposalId: data.proposalId, evaluatorId: session.user.id, ...scoreFields, catatanReviewer: data.catatanReviewer, isLate },
   });
 
   if (proposal.status === "DE_READY" || proposal.status === "ASSIGNED") {
@@ -70,6 +74,26 @@ export async function submitDeskEvaluation(data: {
   revalidatePath(`/dosen/desk-evaluation-assessment/${data.proposalId}`);
   revalidatePath("/dosen-kelas/desk-evaluation");
   revalidatePath("/dosen-kelas/nilai");
+
+  const newTotal = scoreFields.latarBelakang + scoreFields.formulasiMasalah +
+    scoreFields.teoriPendukung + scoreFields.ideMetode;
+  const previousTotal = existing
+    ? existing.latarBelakang + existing.formulasiMasalah + existing.teoriPendukung + existing.ideMetode
+    : null;
+  void logAudit(session.user.id, "DOSEN", existing ? "SCORE_UPDATE" : "SCORE_CREATE", {
+    assessmentType: "DESK_EVALUATION",
+    proposalId: data.proposalId,
+    mahasiswaName: proposal.enrollment.student.name,
+    mahasiswaNim: proposal.enrollment.student.identifier,
+    classCode: proposal.enrollment.class.code,
+    dosenRole: "DESK_EVALUATOR",
+    isUpdate: !!existing,
+    previousTotal,
+    newTotal,
+    previousFields: existing ? { ...existing } : null,
+    newFields: { ...scoreFields, isLate },
+    source: "MANUAL",
+  }, "PROPOSAL", data.proposalId);
 
   return { success: true };
 }
