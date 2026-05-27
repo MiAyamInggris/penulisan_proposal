@@ -22,9 +22,12 @@ export function sortSemesters<T extends { semester: string; academicYear: string
 export function SemesterCardGrid({
   semesters,
   basePath,
+  scoredLabel = "telah dinilai",
 }: {
   semesters: SemesterStat[];
   basePath: string;
+  /** Label for the scored/total line. Pass null to hide it entirely. */
+  scoredLabel?: string | null;
 }) {
   if (semesters.length === 0) {
     return <p className="text-gray-500">Belum ada mahasiswa yang ditugaskan kepada Anda.</p>;
@@ -35,7 +38,7 @@ export function SemesterCardGrid({
       {semesters.map((s) => {
         const label = `Semester ${s.semester} ${s.academicYear}`;
         const href = `${basePath}?semester=${encodeURIComponent(s.semester)}&year=${encodeURIComponent(s.academicYear)}`;
-        const allDone = s.scored === s.total && s.total > 0;
+        const allDone = scoredLabel !== null && s.scored === s.total && s.total > 0;
 
         return (
           <Link key={`${s.semester}-${s.academicYear}`} href={href}>
@@ -48,14 +51,16 @@ export function SemesterCardGrid({
                       <Users className="h-3.5 w-3.5" />
                       <span>{s.total} mahasiswa</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-sm">
-                      <CheckCircle2
-                        className={`h-3.5 w-3.5 ${allDone ? "text-green-500" : "text-gray-300"}`}
-                      />
-                      <span className={allDone ? "text-green-600 font-medium" : "text-gray-500"}>
-                        {s.scored} / {s.total} telah dinilai
-                      </span>
-                    </div>
+                    {scoredLabel !== null && (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <CheckCircle2
+                          className={`h-3.5 w-3.5 ${allDone ? "text-green-500" : "text-gray-300"}`}
+                        />
+                        <span className={allDone ? "text-green-600 font-medium" : "text-gray-500"}>
+                          {s.scored} / {s.total} {scoredLabel}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400 shrink-0 mt-1" />
                 </div>
