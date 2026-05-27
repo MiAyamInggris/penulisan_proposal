@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { saveNilaiLR } from "./actions";
 import { Pencil } from "lucide-react";
+import { OtherPembimbingPanel, type OtherPembimbingData } from "@/app/pembimbing/_components/other-pembimbing-panel";
 
 const GROUPS = [
   {
@@ -40,19 +41,29 @@ type NilaiLR = {
   kelebihanKekurangan: number;
   relasiTeori: number;
   catatan: string | null;
+  updatedAt: string;
 };
 
-type Proposal = {
+export type LRProposalRow = {
   id: string;
   titleId: string;
   enrollment: {
     student: { name: string; identifier: string };
     class: { code: string };
   };
-  nilaiLiteratureReview: NilaiLR[];
+  myScore: NilaiLR | null;
+  otherPembimbing: OtherPembimbingData | null;
 };
 
-function LRForm({ proposalId, existing, onClose }: { proposalId: string; existing: NilaiLR | null; onClose: () => void }) {
+function LRForm({
+  proposalId,
+  existing,
+  onClose,
+}: {
+  proposalId: string;
+  existing: NilaiLR | null;
+  onClose: () => void;
+}) {
   const initScores = Object.fromEntries(
     CRITERIA.map((c) => [c.name, (existing as Record<string, unknown> | null)?.[c.name] as number ?? 0])
   );
@@ -151,7 +162,7 @@ function LRForm({ proposalId, existing, onClose }: { proposalId: string; existin
   );
 }
 
-export function LRScoreList({ proposals }: { proposals: Proposal[] }) {
+export function LRScoreList({ proposals }: { proposals: LRProposalRow[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (proposals.length === 0) {
@@ -161,7 +172,7 @@ export function LRScoreList({ proposals }: { proposals: Proposal[] }) {
   return (
     <div className="space-y-3">
       {proposals.map((p) => {
-        const existing = p.nilaiLiteratureReview[0] ?? null;
+        const existing = p.myScore;
         const total = existing
           ? CRITERIA.map((c) => (existing as unknown as Record<string, number>)[c.name]).reduce((a, b) => a + b, 0)
           : null;
@@ -175,7 +186,11 @@ export function LRScoreList({ proposals }: { proposals: Proposal[] }) {
                     <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">{p.enrollment.class.code}</span>
                     <span className="font-medium">{p.enrollment.student.name}</span>
                   </div>
-                  {total !== null && <p className="text-sm mt-1">Nilai LR: <span className="font-bold">{total.toFixed(1)}/100</span></p>}
+                  {total !== null && (
+                    <p className="text-sm mt-1">
+                      Nilai LR: <span className="font-bold">{total.toFixed(1)}/100</span>
+                    </p>
+                  )}
                 </div>
                 <Button
                   size="sm"
@@ -187,6 +202,10 @@ export function LRScoreList({ proposals }: { proposals: Proposal[] }) {
                   {existing ? "Edit" : "Nilai"}
                 </Button>
               </div>
+
+              {p.otherPembimbing && (
+                <OtherPembimbingPanel data={p.otherPembimbing} />
+              )}
             </CardContent>
           </Card>
         );
@@ -202,7 +221,7 @@ export function LRScoreList({ proposals }: { proposals: Proposal[] }) {
             </DialogHeader>
             <LRForm
               proposalId={openId}
-              existing={proposals.find((p) => p.id === openId)?.nilaiLiteratureReview[0] ?? null}
+              existing={proposals.find((p) => p.id === openId)?.myScore ?? null}
               onClose={() => setOpenId(null)}
             />
           </DialogContent>

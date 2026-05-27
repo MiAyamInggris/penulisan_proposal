@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { saveNilaiBimbingan } from "./actions";
 import { Pencil } from "lucide-react";
+import { OtherPembimbingPanel, type OtherPembimbingData } from "@/app/pembimbing/_components/other-pembimbing-panel";
 
 const GROUPS = [
   {
@@ -42,9 +43,10 @@ type NilaiBimbingan = {
   kemandirian: number;
   prosesBimbingan: number;
   notes: string | null;
+  updatedAt: string;
 };
 
-type Proposal = {
+export type BimbinganProposalRow = {
   id: string;
   titleId: string;
   status: string;
@@ -53,10 +55,19 @@ type Proposal = {
     class: { code: string };
   };
   bimbinganSessions: { id: string; sessionNumber: number }[];
-  nilaiBimbingan: NilaiBimbingan[];
+  myScore: NilaiBimbingan | null;
+  otherPembimbing: OtherPembimbingData | null;
 };
 
-function ScoreForm({ proposal, existing, onClose }: { proposal: Proposal; existing: NilaiBimbingan | null; onClose: () => void }) {
+function ScoreForm({
+  proposal,
+  existing,
+  onClose,
+}: {
+  proposal: BimbinganProposalRow;
+  existing: NilaiBimbingan | null;
+  onClose: () => void;
+}) {
   const initScores = Object.fromEntries(
     CRITERIA.map((c) => [c.name, (existing as Record<string, unknown> | null)?.[c.name] as number ?? 0])
   );
@@ -159,7 +170,7 @@ function ScoreForm({ proposal, existing, onClose }: { proposal: Proposal; existi
   );
 }
 
-export function BimbinganScoreList({ proposals }: { proposals: Proposal[] }) {
+export function BimbinganScoreList({ proposals }: { proposals: BimbinganProposalRow[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (proposals.length === 0) {
@@ -169,7 +180,7 @@ export function BimbinganScoreList({ proposals }: { proposals: Proposal[] }) {
   return (
     <div className="space-y-3">
       {proposals.map((p) => {
-        const existing = p.nilaiBimbingan[0] ?? null;
+        const existing = p.myScore;
         const total = existing
           ? CRITERIA.map((c) => (existing as unknown as Record<string, number>)[c.name]).reduce((a, b) => a + b, 0)
           : null;
@@ -199,6 +210,10 @@ export function BimbinganScoreList({ proposals }: { proposals: Proposal[] }) {
                   {existing ? "Edit" : "Nilai"}
                 </Button>
               </div>
+
+              {p.otherPembimbing && (
+                <OtherPembimbingPanel data={p.otherPembimbing} />
+              )}
             </CardContent>
           </Card>
         );
@@ -214,7 +229,7 @@ export function BimbinganScoreList({ proposals }: { proposals: Proposal[] }) {
             </DialogHeader>
             <ScoreForm
               proposal={proposals.find((p) => p.id === openId)!}
-              existing={proposals.find((p) => p.id === openId)?.nilaiBimbingan[0] ?? null}
+              existing={proposals.find((p) => p.id === openId)?.myScore ?? null}
               onClose={() => setOpenId(null)}
             />
           </DialogContent>

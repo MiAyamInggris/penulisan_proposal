@@ -11,6 +11,7 @@ import { saveNilaiPresentasi } from "./actions";
 import { Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { OtherPembimbingPanel, type OtherPembimbingData } from "@/app/pembimbing/_components/other-pembimbing-panel";
 
 const GROUPS = [
   {
@@ -38,9 +39,10 @@ type NilaiPresentasi = {
   toolsPemodelanScore: number;
   pemaparanScore: number;
   komunikasiScore: number;
+  updatedAt: string;
 };
 
-type Proposal = {
+export type PresentasiProposalRow = {
   id: string;
   titleId: string;
   status: string;
@@ -52,8 +54,9 @@ type Proposal = {
     id: string;
     scheduledDate: Date | null;
     location: string | null;
-    nilaiPresentasi: NilaiPresentasi[];
   } | null;
+  myScore: NilaiPresentasi | null;
+  otherPembimbing: OtherPembimbingData | null;
 };
 
 function PresentasiForm({ proposalId, seminarId, existing, onClose }: {
@@ -146,7 +149,7 @@ function PresentasiForm({ proposalId, seminarId, existing, onClose }: {
   );
 }
 
-export function PresentasiScoreList({ proposals }: { proposals: Proposal[] }) {
+export function PresentasiScoreList({ proposals }: { proposals: PresentasiProposalRow[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (proposals.length === 0) {
@@ -156,7 +159,7 @@ export function PresentasiScoreList({ proposals }: { proposals: Proposal[] }) {
   return (
     <div className="space-y-3">
       {proposals.map((p) => {
-        const existing = p.seminar?.nilaiPresentasi[0] ?? null;
+        const existing = p.myScore;
         const total = existing
           ? CRITERIA.map((c) => (existing as unknown as Record<string, number>)[c.name]).reduce((a, b) => a + b, 0)
           : null;
@@ -190,6 +193,10 @@ export function PresentasiScoreList({ proposals }: { proposals: Proposal[] }) {
                   </Button>
                 )}
               </div>
+
+              {p.otherPembimbing && (
+                <OtherPembimbingPanel data={p.otherPembimbing} />
+              )}
             </CardContent>
           </Card>
         );
@@ -209,7 +216,7 @@ export function PresentasiScoreList({ proposals }: { proposals: Proposal[] }) {
                 <PresentasiForm
                   proposalId={p.id}
                   seminarId={p.seminar.id}
-                  existing={p.seminar.nilaiPresentasi[0] ?? null}
+                  existing={p.myScore}
                   onClose={() => setOpenId(null)}
                 />
               ) : null;
