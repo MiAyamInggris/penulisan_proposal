@@ -259,7 +259,7 @@ export default async function KetuaKKDashboard() {
               <div className="p-2 rounded-lg bg-gray-100 text-gray-600 w-fit">
                 <BookOpen className="h-4 w-4" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Historis</p>
+              <p className="text-xs text-gray-500 mt-1">Historical TA2</p>
               <p className="text-2xl font-bold text-gray-700">{totalHistoricalStudents}</p>
               <p className="text-[10px] text-gray-400">mahasiswa</p>
             </div>
@@ -272,7 +272,7 @@ export default async function KetuaKKDashboard() {
               <div className="p-2 rounded-lg bg-blue-50 text-blue-600 w-fit">
                 <Activity className="h-4 w-4" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Aktif</p>
+              <p className="text-xs text-gray-500 mt-1">Active Proposal</p>
               <p className="text-2xl font-bold text-blue-700">{totalActiveStudents}</p>
               <p className="text-[10px] text-gray-400">mahasiswa</p>
             </div>
@@ -285,7 +285,7 @@ export default async function KetuaKKDashboard() {
               <div className="p-2 rounded-lg bg-green-50 text-green-600 w-fit">
                 <TrendingUp className="h-4 w-4" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Total Bimbingan</p>
+              <p className="text-xs text-gray-500 mt-1">Total Workload</p>
               <p className="text-2xl font-bold text-green-700">{totalBimbingan}</p>
             </div>
           </CardContent>
@@ -324,7 +324,7 @@ export default async function KetuaKKDashboard() {
             Beban Dosen — {myKK.nama}
           </CardTitle>
           <p className="text-xs text-gray-500 mt-0.5">
-            Historis = bimbingan selesai (fixed) · Aktif = bimbingan berjalan (expected) · Klik baris untuk detail
+            Historical TA2 = bimbingan selesai (fixed) · Active Proposal = bimbingan berjalan (expected) · Klik baris untuk detail
           </p>
         </CardHeader>
         <CardContent className="p-0">

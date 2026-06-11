@@ -236,11 +236,11 @@ function DosenDetailDialog({
           <span className="text-gray-500">Kuota: <strong className="text-gray-900">{globalQuota}</strong></span>
           <span className="text-gray-300">|</span>
           <span className="text-gray-500">
-            Historis: <strong className="text-gray-700">{row.historicalCount}</strong>
+            Historical TA2: <strong className="text-gray-700">{row.historicalCount}</strong>
           </span>
           <span className="text-gray-300">+</span>
           <span className="text-gray-500">
-            Aktif: <strong className="text-blue-700">{row.activeCount}</strong>
+            Active Proposal: <strong className="text-blue-700">{row.activeCount}</strong>
           </span>
           {row.duplicateActiveCount > 0 && (
             <>
@@ -252,13 +252,13 @@ function DosenDetailDialog({
           )}
           <span className="text-gray-300">=</span>
           <span className="text-gray-500">
-            Total: <strong className={row.potentialTotal > globalQuota ? "text-red-600" : "text-gray-900"}>
+            Total Workload: <strong className={row.potentialTotal > globalQuota ? "text-red-600" : "text-gray-900"}>
               {row.potentialTotal}
             </strong>
           </span>
           <span className="text-gray-300">|</span>
           <span className="text-gray-500">
-            Sisa:{" "}
+            Remaining Capacity:{" "}
             <strong className={row.remaining < 0 ? "text-red-600" : row.remaining <= 2 ? "text-amber-600" : "text-green-700"}>
               {row.remaining}
             </strong>
@@ -286,10 +286,10 @@ function DosenDetailDialog({
           </div>
         </div>
 
-        {/* Bimbingan Historis */}
+        {/* Historical TA2 */}
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-            Bimbingan Historis
+            Historical TA2
             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-gray-100 text-gray-600">
               {row.historicalCount}
             </span>
@@ -297,10 +297,10 @@ function DosenDetailDialog({
           <AssignmentTable assignments={row.historicalAssignments} />
         </div>
 
-        {/* Bimbingan Aktif */}
+        {/* Active Proposal */}
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-            Bimbingan Aktif
+            Active Proposal
             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-blue-50 text-blue-700">
               {row.activeCount}
             </span>
@@ -354,15 +354,15 @@ export function DosenWorkloadTable({
               <th className="text-center px-4 py-3 font-medium">Kode</th>
               <th className="text-center px-4 py-3 font-medium">Kuota</th>
               <th className="text-center px-4 py-3 font-medium">
-                Historis
+                Historical TA2
                 <span className="block text-[10px] font-normal text-gray-400">(fixed)</span>
               </th>
               <th className="text-center px-4 py-3 font-medium">
-                Aktif
+                Active Proposal
                 <span className="block text-[10px] font-normal text-gray-400">(expected)</span>
               </th>
-              <th className="text-center px-4 py-3 font-medium">Total</th>
-              <th className="text-center px-4 py-3 font-medium">Sisa</th>
+              <th className="text-center px-4 py-3 font-medium">Total Workload</th>
+              <th className="text-center px-4 py-3 font-medium">Remaining Capacity</th>
               <th className="text-center px-4 py-3 font-medium">DE</th>
               <th className="text-center px-4 py-3 font-medium">Beban</th>
             </tr>
