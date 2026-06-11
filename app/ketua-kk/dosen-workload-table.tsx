@@ -22,6 +22,8 @@ type Assignment = {
   nim: string;
   studentId: string;
   classCode: string;
+  programCode: string;
+  academicStage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2";
   academicYear: string;
   semester: string;
   isRetake: boolean;
@@ -36,6 +38,8 @@ type DEAssignment = {
   nim: string;
   studentId: string;
   classCode: string;
+  programCode: string;
+  academicStage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2";
   academicYear: string;
   semester: string;
   isRetake: boolean;
@@ -98,6 +102,18 @@ function ContinuedActiveBadge() {
   );
 }
 
+function AcademicStageBadge({ stage }: { stage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2" }) {
+  return stage === "TUGAS_AKHIR_2" ? (
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
+      Tugas Akhir 2
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+      Penulisan Proposal
+    </span>
+  );
+}
+
 // ── Assignment table (used inside the detail dialog) ──────────────────────────
 
 function AssignmentTable({ assignments }: { assignments: Assignment[] }) {
@@ -115,7 +131,9 @@ function AssignmentTable({ assignments }: { assignments: Assignment[] }) {
             <th className="text-left py-1.5 pr-3 font-medium">Nama</th>
             <th className="text-center py-1.5 pr-3 font-medium w-10">Peran</th>
             <th className="text-left py-1.5 pr-3 font-medium">Kelas</th>
+            <th className="text-left py-1.5 pr-3 font-medium">Program Studi</th>
             <th className="text-left py-1.5 pr-3 font-medium">TA</th>
+            <th className="text-left py-1.5 pr-3 font-medium">Academic Stage</th>
             <th className="text-left py-1.5 font-medium">Status</th>
           </tr>
         </thead>
@@ -140,8 +158,12 @@ function AssignmentTable({ assignments }: { assignments: Assignment[] }) {
                 </span>
               </td>
               <td className="py-1.5 pr-3 text-gray-600">{a.classCode}</td>
+              <td className="py-1.5 pr-3 text-gray-600">{a.programCode}</td>
               <td className="py-1.5 pr-3 text-gray-500 whitespace-nowrap">
                 {a.semester}/{a.academicYear}
+              </td>
+              <td className="py-1.5 pr-3">
+                <AcademicStageBadge stage={a.academicStage} />
               </td>
               <td className="py-1.5">
                 <span className="text-gray-600">
@@ -170,7 +192,9 @@ function DETable({ assignments }: { assignments: DEAssignment[] }) {
             <th className="text-left py-1.5 pr-3 font-medium">NIM</th>
             <th className="text-left py-1.5 pr-3 font-medium">Nama</th>
             <th className="text-left py-1.5 pr-3 font-medium">Kelas</th>
+            <th className="text-left py-1.5 pr-3 font-medium">Program Studi</th>
             <th className="text-left py-1.5 pr-3 font-medium">TA</th>
+            <th className="text-left py-1.5 pr-3 font-medium">Academic Stage</th>
             <th className="text-left py-1.5 font-medium">Status</th>
           </tr>
         </thead>
@@ -183,8 +207,12 @@ function DETable({ assignments }: { assignments: DEAssignment[] }) {
                 {a.isRetake && <RetakeBadge />}
               </td>
               <td className="py-1.5 pr-3 text-gray-600">{a.classCode}</td>
+              <td className="py-1.5 pr-3 text-gray-600">{a.programCode}</td>
               <td className="py-1.5 pr-3 text-gray-500 whitespace-nowrap">
                 {a.semester}/{a.academicYear}
+              </td>
+              <td className="py-1.5 pr-3">
+                <AcademicStageBadge stage={a.academicStage} />
               </td>
               <td className="py-1.5 text-gray-600">
                 {STATUS_LABELS[a.status] ?? a.status}

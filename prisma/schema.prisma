@@ -36,6 +36,11 @@ enum ProposalStatus {
   COMPLETED
 }
 
+enum AcademicStage {
+  PENULISAN_PROPOSAL
+  TUGAS_AKHIR_2
+}
+
 enum EprtStatus {
   PENDING
   VERIFIED
@@ -149,6 +154,7 @@ model Proposal {
   topicArea    String?
   abstract     String?
   status       ProposalStatus @default(ENROLLED)
+  academicStage AcademicStage @default(PENULISAN_PROPOSAL)
 
   proposalUrl        String?
   proposalUploadedAt DateTime?

@@ -2,9 +2,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getMyProdi } from "@/lib/kaprodi";
+import { countUniqueStudents } from "@/lib/quota";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, CheckCircle2, XCircle, BarChart3 } from "lucide-react";
+import { Users, CheckCircle2, XCircle, BarChart3, GraduationCap, FileText, Layers } from "lucide-react";
 
 export default async function KaprodiDashboardPage() {
   const session = await auth();
@@ -12,6 +13,22 @@ export default async function KaprodiDashboardPage() {
 
   const prodi = await getMyProdi(session.user.id);
   if (!prodi) redirect("/dosen-select-role");
+
+  const supervisionProposals = await prisma.proposal.findMany({
+    where: {
+      status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] },
+      enrollment: { class: { programId: prodi.id } },
+    },
+    select: { academicStage: true, enrollment: { select: { studentId: true } } },
+  });
+
+  const totalTA2Students = countUniqueStudents(
+    supervisionProposals.filter((p) => p.academicStage === "TUGAS_AKHIR_2")
+  );
+  const totalProposalStudents = countUniqueStudents(
+    supervisionProposals.filter((p) => p.academicStage === "PENULISAN_PROPOSAL")
+  );
+  const totalSupervisionWorkload = totalTA2Students + totalProposalStudents;
 
   const classes = await prisma.class.findMany({
     where: { program: { id: prodi.id } },
@@ -151,6 +168,54 @@ export default async function KaprodiDashboardPage() {
                 <p className="text-2xl font-bold text-purple-700">
                   {overallPct !== null ? `${overallPct.toFixed(1)}%` : "–"}
                 </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Supervision workload (program-wide) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-50 text-green-600">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Total TA2</p>
+                <p className="text-2xl font-bold text-green-700">{totalTA2Students}</p>
+                <p className="text-[10px] text-gray-400">mahasiswa</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Total Proposal</p>
+                <p className="text-2xl font-bold text-blue-700">{totalProposalStudents}</p>
+                <p className="text-[10px] text-gray-400">mahasiswa</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-50 text-purple-600">
+                <Layers className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Total Supervision Workload</p>
+                <p className="text-2xl font-bold text-purple-700">{totalSupervisionWorkload}</p>
+                <p className="text-[10px] text-gray-400">mahasiswa</p>
               </div>
             </div>
           </CardContent>

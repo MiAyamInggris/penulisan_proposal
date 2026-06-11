@@ -21,7 +21,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { bulkImportHistorical, type HistoricalImportResult } from "./actions";
+import { bulkImportHistorical, type HistoricalImportResult } from "@/lib/actions/historical-import";
 
 type ClassOption = {
   id: string;
@@ -29,6 +29,7 @@ type ClassOption = {
   name: string;
   semester: string;
   academicYear: string;
+  program?: { code: string };
 };
 
 export function HistoricalImportClient({ classes }: { classes: ClassOption[] }) {
@@ -94,7 +95,7 @@ export function HistoricalImportClient({ classes }: { classes: ClassOption[] }) 
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-gray-500">
-            Pilih kelas tujuan. Hanya kelas dari Program Studi Anda yang ditampilkan.
+            Pilih kelas tujuan.
           </p>
           <Select value={selectedClassId} onValueChange={(v) => { if (v) setSelectedClassId(v); }}>
             <SelectTrigger className="w-full max-w-md">
@@ -103,6 +104,7 @@ export function HistoricalImportClient({ classes }: { classes: ClassOption[] }) 
             <SelectContent>
               {classes.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
+                  {c.program ? `${c.program.code} · ` : ""}
                   {c.code} — {c.semester} / {c.academicYear}
                 </SelectItem>
               ))}

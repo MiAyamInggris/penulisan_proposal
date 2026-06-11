@@ -52,24 +52,36 @@ export async function bulkImportHistorical(
   formData: FormData
 ): Promise<HistoricalImportResult> {
   const session = await auth();
-  if (!session || session.user.role !== "DOSEN" || !session.user.isKaprodi) {
+  if (!session) throw new Error("Tidak terautentikasi");
+
+  const { role, isKaprodi, isKetua } = session.user;
+  const isAdmin = role === "ADMIN";
+  const isKaprodiUser = role === "DOSEN" && !!isKaprodi;
+  const isKetuaUser = role === "DOSEN" && !!isKetua;
+  if (!isAdmin && !isKaprodiUser && !isKetuaUser) {
     throw new Error("Tidak terautentikasi");
   }
+  const auditRole = isAdmin ? "ADMIN" : isKaprodiUser ? "KAPRODI" : "KETUA_KK";
 
-  const [prodi, kaprodiUser] = await Promise.all([
-    getMyProdi(session.user.id),
-    prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true } }),
-  ]);
-  if (!prodi) throw new Error("Anda tidak memiliki Program Studi yang ditetapkan");
-  const kaprodiName = kaprodiUser?.name ?? "Kaprodi";
+  let prodi: { id: string; name: string; code: string } | null = null;
+  if (isKaprodiUser) {
+    prodi = await getMyProdi(session.user.id);
+    if (!prodi) throw new Error("Anda tidak memiliki Program Studi yang ditetapkan");
+  }
 
-  // Validate class belongs to kaprodi's prodi
+  const actorUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true },
+  });
+  const actorName = actorUser?.name ?? "Pengguna";
+
+  // Validate class belongs to kaprodi's prodi (Kaprodi only — KK/Admin can import any class)
   const targetClass = await prisma.class.findUnique({
     where: { id: classId },
     include: { program: true },
   });
   if (!targetClass) throw new Error("Kelas tidak ditemukan");
-  if (targetClass.programId !== prodi.id) {
+  if (prodi && targetClass.programId !== prodi.id) {
     throw new Error("Kelas tidak termasuk dalam Program Studi Anda");
   }
 
@@ -299,6 +311,7 @@ export async function bulkImportHistorical(
         titleId: judul,
         status: "COMPLETED" as const,
         isHistoricalImport: true,
+        academicStage: "TUGAS_AKHIR_2" as const,
         supervisor1AssignedId: sv1?.id ?? null,
         supervisor2AssignedId: sv2?.id ?? null,
         deskEvaluatorId: de?.id ?? null,
@@ -318,14 +331,14 @@ export async function bulkImportHistorical(
 
       const importBase = {
         userId: session.user.id,
-        userRole: "KAPRODI",
+        userRole: auditRole,
         action: "SCORE_CREATE",
         entityType: "PROPOSAL",
         entityId: proposalId!,
         mahasiswaName: nama,
         mahasiswaNim: nim,
         classCode: targetClass.code,
-        importedBy: kaprodiName,
+        importedBy: actorName,
         source: "BULK_IMPORT",
       };
 
@@ -345,7 +358,7 @@ export async function bulkImportHistorical(
         scoreAuditEntries.push({
           userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
           entityType: importBase.entityType, entityId: importBase.entityId,
-          detail: { assessmentType: "NILAI_BIMBINGAN", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiB1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
+          detail: { assessmentType: "NILAI_BIMBINGAN", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiB1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: actorName } as Prisma.InputJsonValue,
         });
       }
       if (sv2 && nilaiB2 !== null) {
@@ -363,7 +376,7 @@ export async function bulkImportHistorical(
         scoreAuditEntries.push({
           userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
           entityType: importBase.entityType, entityId: importBase.entityId,
-          detail: { assessmentType: "NILAI_BIMBINGAN", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiB2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
+          detail: { assessmentType: "NILAI_BIMBINGAN", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiB2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: actorName } as Prisma.InputJsonValue,
         });
       }
 
@@ -382,7 +395,7 @@ export async function bulkImportHistorical(
         scoreAuditEntries.push({
           userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
           entityType: importBase.entityType, entityId: importBase.entityId,
-          detail: { assessmentType: "NILAI_LR", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiLR1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
+          detail: { assessmentType: "NILAI_LR", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiLR1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: actorName } as Prisma.InputJsonValue,
         });
       }
       if (sv2 && nilaiLR2 !== null) {
@@ -399,7 +412,7 @@ export async function bulkImportHistorical(
         scoreAuditEntries.push({
           userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
           entityType: importBase.entityType, entityId: importBase.entityId,
-          detail: { assessmentType: "NILAI_LR", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiLR2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
+          detail: { assessmentType: "NILAI_LR", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiLR2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: actorName } as Prisma.InputJsonValue,
         });
       }
 
@@ -436,7 +449,7 @@ export async function bulkImportHistorical(
         scoreAuditEntries.push({
           userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
           entityType: importBase.entityType, entityId: importBase.entityId,
-          detail: { assessmentType: "NILAI_PRESENTASI", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiP1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
+          detail: { assessmentType: "NILAI_PRESENTASI", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv1.name, dosenRole: "PEMBIMBING_1", isUpdate: false, previousTotal: null, newTotal: nilaiP1, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: actorName } as Prisma.InputJsonValue,
         });
       }
       if (seminarId && sv2 && nilaiP2 !== null) {
@@ -453,7 +466,7 @@ export async function bulkImportHistorical(
         scoreAuditEntries.push({
           userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
           entityType: importBase.entityType, entityId: importBase.entityId,
-          detail: { assessmentType: "NILAI_PRESENTASI", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiP2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
+          detail: { assessmentType: "NILAI_PRESENTASI", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: sv2.name, dosenRole: "PEMBIMBING_2", isUpdate: false, previousTotal: null, newTotal: nilaiP2, previousFields: null, newFields: fields, source: "BULK_IMPORT", importedBy: actorName } as Prisma.InputJsonValue,
         });
       }
 
@@ -472,12 +485,12 @@ export async function bulkImportHistorical(
         scoreAuditEntries.push({
           userId: importBase.userId, userRole: importBase.userRole, action: importBase.action,
           entityType: importBase.entityType, entityId: importBase.entityId,
-          detail: { assessmentType: "DESK_EVALUATION", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: de.name, dosenRole: "DESK_EVALUATOR", isUpdate: false, previousTotal: null, newTotal: nilaiDE, previousFields: null, newFields: { ...fields, isLate: false }, source: "BULK_IMPORT", importedBy: kaprodiName } as Prisma.InputJsonValue,
+          detail: { assessmentType: "DESK_EVALUATION", proposalId: proposalId!, mahasiswaName: nama, mahasiswaNim: nim, classCode: targetClass.code, dosenName: de.name, dosenRole: "DESK_EVALUATOR", isUpdate: false, previousTotal: null, newTotal: nilaiDE, previousFields: null, newFields: { ...fields, isLate: false }, source: "BULK_IMPORT", importedBy: actorName } as Prisma.InputJsonValue,
         });
       }
 
       // --- Compute final grade via grade engine ---
-      await computeFinalGrade(proposalId!);
+      await computeFinalGrade(proposalId!, { id: session.user.id, role: auditRole });
 
       result.enrolled++;
     } catch (err: unknown) {
@@ -492,6 +505,7 @@ export async function bulkImportHistorical(
   revalidatePath("/kaprodi/rekap");
   revalidatePath("/ketua-kk/dashboard");
   revalidatePath("/ketua-kk/alokasi-pembimbing");
+  revalidatePath("/ketua-kk/import");
   revalidatePath("/admin/audit-log");
 
   // Batch-insert per-score audit entries
@@ -506,12 +520,12 @@ export async function bulkImportHistorical(
   // Write summary audit log entry
   await logAudit(
     session.user.id,
-    "KAPRODI",
+    auditRole,
     "BULK_IMPORT_HISTORICAL",
     {
       classId,
       classCode: targetClass.code,
-      prodiCode: prodi.code,
+      prodiCode: targetClass.program.code,
       total: result.total,
       enrolled: result.enrolled,
       skipped: result.skipped,

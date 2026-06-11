@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { maybePromoteAcademicStage } from "./academic-stage";
 
 export function getGradeIndex(score: number): string {
   if (score > 85) return "A";
@@ -10,7 +11,10 @@ export function getGradeIndex(score: number): string {
   return "E";
 }
 
-export async function computeFinalGrade(proposalId: string): Promise<void> {
+export async function computeFinalGrade(
+  proposalId: string,
+  actor: { id: string; role: string }
+): Promise<void> {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
     include: {
@@ -140,4 +144,6 @@ export async function computeFinalGrade(proposalId: string): Promise<void> {
       computedAt: weightedTotal !== null ? new Date() : null,
     },
   });
+
+  await maybePromoteAcademicStage(proposalId, passed, actor);
 }

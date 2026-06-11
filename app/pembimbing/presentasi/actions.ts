@@ -52,7 +52,7 @@ export async function saveNilaiPresentasi(seminarId: string, proposalId: string,
     data: { status: "SEMINAR_COMPLETED" },
   });
 
-  await computeFinalGrade(proposalId);
+  await computeFinalGrade(proposalId, { id: session.user.id, role: "DOSEN" });
   revalidatePath("/pembimbing/presentasi");
 
   if (ctx) {

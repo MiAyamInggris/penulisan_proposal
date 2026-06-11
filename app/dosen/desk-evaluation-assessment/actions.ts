@@ -68,7 +68,7 @@ export async function submitDeskEvaluation(data: {
     });
   }
 
-  await computeFinalGrade(data.proposalId);
+  await computeFinalGrade(data.proposalId, { id: session.user.id, role: "DOSEN" });
 
   revalidatePath("/dosen/desk-evaluation-assessment");
   revalidatePath(`/dosen/desk-evaluation-assessment/${data.proposalId}`);

@@ -61,7 +61,7 @@ export async function scoreDeskEvaluation(proposalId: string, formData: FormData
     }),
   ]);
 
-  await computeFinalGrade(proposalId);
+  await computeFinalGrade(proposalId, { id: session.user.id, role: "DOSEN" });
 
   revalidatePath("/pembimbing/desk-evaluation");
   revalidatePath("/dosen-kelas/desk-evaluation");

@@ -43,13 +43,19 @@ export default async function KetuaKKDashboard() {
             id: true,
             status: true,
             isHistoricalImport: true,
+            academicStage: true,
             titleId: true,
             supervisor1AssignedId: true,
             supervisor2AssignedId: true,
             enrollment: {
               select: {
                 class: {
-                  select: { code: true, academicYear: true, semester: true },
+                  select: {
+                    code: true,
+                    academicYear: true,
+                    semester: true,
+                    program: { select: { code: true } },
+                  },
                 },
                 student: { select: { id: true, name: true, identifier: true } },
               },
@@ -62,13 +68,19 @@ export default async function KetuaKKDashboard() {
             id: true,
             status: true,
             isHistoricalImport: true,
+            academicStage: true,
             titleId: true,
             supervisor1AssignedId: true,
             supervisor2AssignedId: true,
             enrollment: {
               select: {
                 class: {
-                  select: { code: true, academicYear: true, semester: true },
+                  select: {
+                    code: true,
+                    academicYear: true,
+                    semester: true,
+                    program: { select: { code: true } },
+                  },
                 },
                 student: { select: { id: true, name: true, identifier: true } },
               },
@@ -81,10 +93,16 @@ export default async function KetuaKKDashboard() {
             id: true,
             status: true,
             isHistoricalImport: true,
+            academicStage: true,
             enrollment: {
               select: {
                 class: {
-                  select: { code: true, academicYear: true, semester: true },
+                  select: {
+                    code: true,
+                    academicYear: true,
+                    semester: true,
+                    program: { select: { code: true } },
+                  },
                 },
                 student: { select: { id: true, name: true, identifier: true } },
               },
@@ -139,6 +157,8 @@ export default async function KetuaKKDashboard() {
         nim: p.enrollment.student.identifier,
         studentId: p.enrollment.student.id,
         classCode: p.enrollment.class.code,
+        programCode: p.enrollment.class.program.code,
+        academicStage: p.academicStage,
         academicYear: p.enrollment.class.academicYear,
         semester: p.enrollment.class.semester,
         isRetake: retakeStudentIds.has(p.enrollment.student.id),
@@ -157,6 +177,8 @@ export default async function KetuaKKDashboard() {
         nim: p.enrollment.student.identifier,
         studentId: p.enrollment.student.id,
         classCode: p.enrollment.class.code,
+        programCode: p.enrollment.class.program.code,
+        academicStage: p.academicStage,
         academicYear: p.enrollment.class.academicYear,
         semester: p.enrollment.class.semester,
         isRetake: retakeStudentIds.has(p.enrollment.student.id),
@@ -171,6 +193,8 @@ export default async function KetuaKKDashboard() {
       nim: p.enrollment.student.identifier,
       studentId: p.enrollment.student.id,
       classCode: p.enrollment.class.code,
+      programCode: p.enrollment.class.program.code,
+      academicStage: p.academicStage,
       academicYear: p.enrollment.class.academicYear,
       semester: p.enrollment.class.semester,
       isRetake: retakeStudentIds.has(p.enrollment.student.id),

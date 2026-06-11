@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
-import { LayoutDashboard, Users, Sliders, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Sliders, Settings, Upload } from "lucide-react";
 
 const navItems = [
   {
@@ -18,6 +18,11 @@ const navItems = [
     href: "/ketua-kk/kuota",
     label: "Kuota Pembimbing",
     icon: <Sliders className="h-4 w-4" />,
+  },
+  {
+    href: "/ketua-kk/import",
+    label: "Import Historis TA2",
+    icon: <Upload className="h-4 w-4" />,
   },
   {
     href: "/account/settings",

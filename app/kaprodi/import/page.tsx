@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getMyProdi } from "@/lib/kaprodi";
-import { HistoricalImportClient } from "./import-client";
+import { HistoricalImportClient } from "@/components/historical-import-client";
 
 export default async function KaprodiImportPage() {
   const session = await auth();

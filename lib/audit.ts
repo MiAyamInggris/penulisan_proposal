@@ -9,7 +9,8 @@ export type AuditAction =
   | "KK_SYNC"
   | "DOSEN_SYNC"
   | "SCORE_CREATE"
-  | "SCORE_UPDATE";
+  | "SCORE_UPDATE"
+  | "ACADEMIC_STAGE_PROMOTION";
 
 export type AssessmentType =
   | "NILAI_BIMBINGAN"

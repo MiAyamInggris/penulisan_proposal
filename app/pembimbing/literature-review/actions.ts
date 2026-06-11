@@ -49,7 +49,7 @@ export async function saveNilaiLR(proposalId: string, formData: FormData) {
     create: { proposalId, pembimbingId: session.user.id, ...data },
   });
 
-  await computeFinalGrade(proposalId);
+  await computeFinalGrade(proposalId, { id: session.user.id, role: "DOSEN" });
   revalidatePath("/pembimbing/literature-review");
 
   if (ctx) {
