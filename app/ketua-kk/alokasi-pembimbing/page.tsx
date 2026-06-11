@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGlobalQuota } from "@/lib/settings";
 import { getMyKK } from "@/lib/kk";
+import { countUniqueStudents } from "@/lib/quota";
 import { AllocateList } from "./allocate-list";
 import { AlertCircle } from "lucide-react";
 
@@ -58,11 +59,11 @@ export default async function KetuaKKAlokasiPage() {
         name: true,
         supervisedAsFirst: {
           where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
-          select: { id: true },
+          select: { enrollment: { select: { studentId: true } } },
         },
         supervisedAsSecond: {
           where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
-          select: { id: true },
+          select: { enrollment: { select: { studentId: true } } },
         },
       },
       orderBy: { name: "asc" },
@@ -73,7 +74,7 @@ export default async function KetuaKKAlokasiPage() {
   const pembimbingList = dosenList.map((d) => ({
     id: d.id,
     name: d.name,
-    bimbinganCount: d.supervisedAsFirst.length + d.supervisedAsSecond.length,
+    bimbinganCount: countUniqueStudents(d.supervisedAsFirst, d.supervisedAsSecond),
   }));
 
   return (

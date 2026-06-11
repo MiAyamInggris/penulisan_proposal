@@ -25,6 +25,7 @@ type Assignment = {
   academicYear: string;
   semester: string;
   isRetake: boolean;
+  isContinuedActive?: boolean;
 };
 
 type DEAssignment = {
@@ -50,6 +51,7 @@ export type DosenRow = {
   activeCount: number;
   deCount: number;
   potentialTotal: number;
+  duplicateActiveCount: number;
   remaining: number;
   loadPct: number;
   loadStatus: "ringan" | "normal" | "hampir-penuh" | "melebihi-kuota";
@@ -88,6 +90,14 @@ function RetakeBadge() {
   );
 }
 
+function ContinuedActiveBadge() {
+  return (
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-500 border border-gray-200 shrink-0 ml-1">
+      Diteruskan ke kelas aktif
+    </span>
+  );
+}
+
 // ── Assignment table (used inside the detail dialog) ──────────────────────────
 
 function AssignmentTable({ assignments }: { assignments: Assignment[] }) {
@@ -116,6 +126,7 @@ function AssignmentTable({ assignments }: { assignments: Assignment[] }) {
               <td className="py-1.5 pr-3">
                 <span className="font-medium text-gray-800">{a.studentName}</span>
                 {a.isRetake && <RetakeBadge />}
+                {a.isContinuedActive && <ContinuedActiveBadge />}
               </td>
               <td className="py-1.5 pr-3 text-center">
                 <span
@@ -231,6 +242,14 @@ function DosenDetailDialog({
           <span className="text-gray-500">
             Aktif: <strong className="text-blue-700">{row.activeCount}</strong>
           </span>
+          {row.duplicateActiveCount > 0 && (
+            <>
+              <span className="text-gray-300">−</span>
+              <span className="text-gray-500">
+                Duplikat: <strong className="text-amber-700">{row.duplicateActiveCount}</strong>
+              </span>
+            </>
+          )}
           <span className="text-gray-300">=</span>
           <span className="text-gray-500">
             Total: <strong className={row.potentialTotal > globalQuota ? "text-red-600" : "text-gray-900"}>
@@ -385,6 +404,14 @@ export function DosenWorkloadTable({
                     >
                       {d.potentialTotal}
                     </span>
+                    {d.duplicateActiveCount > 0 && (
+                      <span
+                        className="block text-[10px] font-normal text-amber-600 mt-0.5"
+                        title="Mahasiswa mengulang dengan dosen yang sama: tidak dihitung dua kali"
+                      >
+                        −{d.duplicateActiveCount} duplikat
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span

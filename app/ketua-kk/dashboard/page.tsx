@@ -128,22 +128,6 @@ export default async function KetuaKKDashboard() {
       ...d.supervisedAsSecond.map((p) => ({ ...p, role: "P2" as const })),
     ];
 
-    const historicalAssignments = allBimbingan
-      .filter((p) => p.status === "COMPLETED")
-      .map((p) => ({
-        proposalId: p.id,
-        role: p.role,
-        titleId: p.titleId,
-        status: p.status,
-        studentName: p.enrollment.student.name,
-        nim: p.enrollment.student.identifier,
-        studentId: p.enrollment.student.id,
-        classCode: p.enrollment.class.code,
-        academicYear: p.enrollment.class.academicYear,
-        semester: p.enrollment.class.semester,
-        isRetake: retakeStudentIds.has(p.enrollment.student.id),
-      }));
-
     const activeAssignments = allBimbingan
       .filter((p) => p.status !== "COMPLETED")
       .map((p) => ({
@@ -160,6 +144,25 @@ export default async function KetuaKKDashboard() {
         isRetake: retakeStudentIds.has(p.enrollment.student.id),
       }));
 
+    const activeStudentIds = new Set(activeAssignments.map((a) => a.studentId));
+
+    const historicalAssignments = allBimbingan
+      .filter((p) => p.status === "COMPLETED")
+      .map((p) => ({
+        proposalId: p.id,
+        role: p.role,
+        titleId: p.titleId,
+        status: p.status,
+        studentName: p.enrollment.student.name,
+        nim: p.enrollment.student.identifier,
+        studentId: p.enrollment.student.id,
+        classCode: p.enrollment.class.code,
+        academicYear: p.enrollment.class.academicYear,
+        semester: p.enrollment.class.semester,
+        isRetake: retakeStudentIds.has(p.enrollment.student.id),
+        isContinuedActive: activeStudentIds.has(p.enrollment.student.id),
+      }));
+
     const deAssignments = d.assignedDeskEvals.map((p) => ({
       proposalId: p.id,
       status: p.status,
@@ -174,9 +177,16 @@ export default async function KetuaKKDashboard() {
     }));
 
     const historicalCount = historicalAssignments.length;
-    const activeCount = activeAssignments.length;
+    // "Mengulang" students can have multiple non-COMPLETED proposals (e.g. a
+    // failed historical-import record and a new active record) under the same
+    // dosen. Count unique students so each only contributes once to the
+    // expected/active quota.
+    const activeCount = activeStudentIds.size;
     const deCount = deAssignments.length;
-    const potentialTotal = historicalCount + activeCount;
+    const historicalStudentIds = new Set(historicalAssignments.map((a) => a.studentId));
+    const potentialTotal = new Set([...historicalStudentIds, ...activeStudentIds]).size;
+    const duplicateActiveCount =
+      historicalAssignments.length + activeAssignments.length - potentialTotal;
     const loadPct = globalQuota > 0 ? (potentialTotal / globalQuota) * 100 : 0;
     const remaining = globalQuota - potentialTotal;
     const loadStatus: DosenRow["loadStatus"] =
@@ -198,6 +208,7 @@ export default async function KetuaKKDashboard() {
       activeCount,
       deCount,
       potentialTotal,
+      duplicateActiveCount,
       remaining,
       loadPct,
       loadStatus,

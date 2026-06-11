@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGlobalQuota } from "@/lib/settings";
 import { getMyKK } from "@/lib/kk";
+import { countUniqueStudents } from "@/lib/quota";
 import { QuotaTable } from "./quota-table";
 import { AlertCircle } from "lucide-react";
 
@@ -34,11 +35,11 @@ export default async function KetuaKKKuotaPage() {
         isKetua: true,
         supervisedAsFirst: {
           where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
-          select: { id: true },
+          select: { enrollment: { select: { studentId: true } } },
         },
         supervisedAsSecond: {
           where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
-          select: { id: true },
+          select: { enrollment: { select: { studentId: true } } },
         },
       },
       orderBy: { name: "asc" },
@@ -51,7 +52,7 @@ export default async function KetuaKKKuotaPage() {
     name: d.name,
     identifier: d.identifier,
     isKetua: d.isKetua,
-    bimbinganCount: d.supervisedAsFirst.length + d.supervisedAsSecond.length,
+    bimbinganCount: countUniqueStudents(d.supervisedAsFirst, d.supervisedAsSecond),
   }));
 
   return (

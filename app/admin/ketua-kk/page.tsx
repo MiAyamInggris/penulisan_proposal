@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getGlobalQuota } from "@/lib/settings";
+import { countUniqueStudents } from "@/lib/quota";
 import { AdminKKTabs } from "./admin-kk-tabs";
 
 export default async function AdminKetuaKKPage() {
@@ -12,10 +13,10 @@ export default async function AdminKetuaKKPage() {
         identifier: true,
         isKetua: true,
         supervisedAsFirst: {
-          select: { id: true, status: true },
+          select: { status: true, enrollment: { select: { studentId: true } } },
         },
         supervisedAsSecond: {
-          select: { id: true, status: true },
+          select: { status: true, enrollment: { select: { studentId: true } } },
         },
       },
       orderBy: [{ isKetua: "desc" }, { name: "asc" }],
@@ -45,10 +46,11 @@ export default async function AdminKetuaKKPage() {
     name: d.name,
     identifier: d.identifier,
     isKetua: d.isKetua,
-    bimbinganCount: d.supervisedAsFirst.length + d.supervisedAsSecond.length,
-    activeBimbingan:
-      d.supervisedAsFirst.filter((p) => activeStatuses.includes(p.status)).length +
-      d.supervisedAsSecond.filter((p) => activeStatuses.includes(p.status)).length,
+    bimbinganCount: countUniqueStudents(d.supervisedAsFirst, d.supervisedAsSecond),
+    activeBimbingan: countUniqueStudents(
+      d.supervisedAsFirst.filter((p) => activeStatuses.includes(p.status)),
+      d.supervisedAsSecond.filter((p) => activeStatuses.includes(p.status))
+    ),
   }));
 
   const quotaRows = kkRows.map(({ activeBimbingan: _a, ...rest }) => rest);
