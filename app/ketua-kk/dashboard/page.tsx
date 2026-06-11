@@ -2,9 +2,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGlobalQuota } from "@/lib/settings";
 import { getMyKK } from "@/lib/kk";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Users, BookOpen, Activity, ClipboardCheck, BarChart3, TrendingUp } from "lucide-react";
+import { DosenWorkloadTable } from "../dosen-workload-table";
+import type { DosenRow } from "../dosen-workload-table";
 
 export default async function KetuaKKDashboard() {
   const session = await auth();
@@ -27,141 +28,296 @@ export default async function KetuaKKDashboard() {
     );
   }
 
-  const [dosenList, globalQuota] = await Promise.all([
+  const [dosenRaw, globalQuota] = await Promise.all([
     prisma.user.findMany({
       where: { role: "DOSEN", isActive: true, kelompokKeahlianId: myKK.id },
       select: {
         id: true,
         name: true,
         identifier: true,
+        kodeDosen: true,
         isKetua: true,
         supervisedAsFirst: {
           where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
-          select: { id: true },
+          select: {
+            id: true,
+            status: true,
+            isHistoricalImport: true,
+            titleId: true,
+            supervisor1AssignedId: true,
+            supervisor2AssignedId: true,
+            enrollment: {
+              select: {
+                class: {
+                  select: { code: true, academicYear: true, semester: true },
+                },
+                student: { select: { id: true, name: true, identifier: true } },
+              },
+            },
+          },
         },
         supervisedAsSecond: {
           where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
-          select: { id: true },
+          select: {
+            id: true,
+            status: true,
+            isHistoricalImport: true,
+            titleId: true,
+            supervisor1AssignedId: true,
+            supervisor2AssignedId: true,
+            enrollment: {
+              select: {
+                class: {
+                  select: { code: true, academicYear: true, semester: true },
+                },
+                student: { select: { id: true, name: true, identifier: true } },
+              },
+            },
+          },
         },
-        assignedDeskEvals: { select: { id: true } },
+        assignedDeskEvals: {
+          where: { status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] } },
+          select: {
+            id: true,
+            status: true,
+            isHistoricalImport: true,
+            enrollment: {
+              select: {
+                class: {
+                  select: { code: true, academicYear: true, semester: true },
+                },
+                student: { select: { id: true, name: true, identifier: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { name: "asc" },
     }),
     getGlobalQuota(),
   ]);
 
-  const rows = dosenList.map((d) => {
-    const bimbinganCount = d.supervisedAsFirst.length + d.supervisedAsSecond.length;
-    const deCount = d.assignedDeskEvals.length;
-    const usage = bimbinganCount / (globalQuota || 1);
-    const status = usage >= 1 ? "penuh" : usage >= 0.7 ? "hampir penuh" : "tersedia";
-    return { ...d, bimbinganCount, deCount, usage, status };
+  // Collect all student IDs across all assignments for isRetake check
+  const allStudentIds = [
+    ...new Set(
+      dosenRaw.flatMap((d) => [
+        ...d.supervisedAsFirst.map((p) => p.enrollment.student.id),
+        ...d.supervisedAsSecond.map((p) => p.enrollment.student.id),
+        ...d.assignedDeskEvals.map((p) => p.enrollment.student.id),
+      ])
+    ),
+  ];
+
+  const retakeStudentIds = new Set(
+    (
+      await prisma.classEnrollment.findMany({
+        where: {
+          studentId: { in: allStudentIds },
+          proposal: { finalGrade: { passed: false } },
+        },
+        select: { studentId: true },
+      })
+    ).map((e) => e.studentId)
+  );
+
+  // Build typed rows with historical/active split
+  const rows: DosenRow[] = dosenRaw.map((d) => {
+    // Combine sv1 and sv2 assignments, tagging each with role
+    const allBimbingan = [
+      ...d.supervisedAsFirst.map((p) => ({ ...p, role: "P1" as const })),
+      ...d.supervisedAsSecond.map((p) => ({ ...p, role: "P2" as const })),
+    ];
+
+    const historicalAssignments = allBimbingan
+      .filter((p) => p.status === "COMPLETED")
+      .map((p) => ({
+        proposalId: p.id,
+        role: p.role,
+        titleId: p.titleId,
+        status: p.status,
+        studentName: p.enrollment.student.name,
+        nim: p.enrollment.student.identifier,
+        studentId: p.enrollment.student.id,
+        classCode: p.enrollment.class.code,
+        academicYear: p.enrollment.class.academicYear,
+        semester: p.enrollment.class.semester,
+        isRetake: retakeStudentIds.has(p.enrollment.student.id),
+      }));
+
+    const activeAssignments = allBimbingan
+      .filter((p) => p.status !== "COMPLETED")
+      .map((p) => ({
+        proposalId: p.id,
+        role: p.role,
+        titleId: p.titleId,
+        status: p.status,
+        studentName: p.enrollment.student.name,
+        nim: p.enrollment.student.identifier,
+        studentId: p.enrollment.student.id,
+        classCode: p.enrollment.class.code,
+        academicYear: p.enrollment.class.academicYear,
+        semester: p.enrollment.class.semester,
+        isRetake: retakeStudentIds.has(p.enrollment.student.id),
+      }));
+
+    const deAssignments = d.assignedDeskEvals.map((p) => ({
+      proposalId: p.id,
+      status: p.status,
+      isHistoricalImport: p.isHistoricalImport,
+      studentName: p.enrollment.student.name,
+      nim: p.enrollment.student.identifier,
+      studentId: p.enrollment.student.id,
+      classCode: p.enrollment.class.code,
+      academicYear: p.enrollment.class.academicYear,
+      semester: p.enrollment.class.semester,
+      isRetake: retakeStudentIds.has(p.enrollment.student.id),
+    }));
+
+    const historicalCount = historicalAssignments.length;
+    const activeCount = activeAssignments.length;
+    const deCount = deAssignments.length;
+    const potentialTotal = historicalCount + activeCount;
+    const loadPct = globalQuota > 0 ? (potentialTotal / globalQuota) * 100 : 0;
+    const remaining = globalQuota - potentialTotal;
+    const loadStatus: DosenRow["loadStatus"] =
+      loadPct > 100
+        ? "melebihi-kuota"
+        : loadPct > 80
+        ? "hampir-penuh"
+        : loadPct > 50
+        ? "normal"
+        : "ringan";
+
+    return {
+      id: d.id,
+      name: d.name,
+      identifier: d.identifier,
+      kodeDosen: d.kodeDosen,
+      isKetua: d.isKetua,
+      historicalCount,
+      activeCount,
+      deCount,
+      potentialTotal,
+      remaining,
+      loadPct,
+      loadStatus,
+      historicalAssignments,
+      activeAssignments,
+      deAssignments,
+    };
   });
+
+  // Summary stats
+  const totalHistoricalStudents = new Set(
+    rows.flatMap((r) => r.historicalAssignments.map((a) => a.studentId))
+  ).size;
+  const totalActiveStudents = new Set(
+    rows.flatMap((r) => r.activeAssignments.map((a) => a.studentId))
+  ).size;
+  const totalBimbingan = rows.reduce((a, r) => a + r.potentialTotal, 0);
+  const totalDE = rows.reduce((a, r) => a + r.deCount, 0);
+  const avgLoad = rows.length > 0 ? totalBimbingan / rows.length : 0;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Ketua KK</h1>
         <p className="text-sm text-gray-500 mt-1">
-          <span className="font-medium text-gray-700">{myKK.nama}</span> · monitoring beban
-          bimbingan (kuota global: {globalQuota} per dosen)
+          <span className="font-medium text-gray-700">{myKK.nama}</span> · kuota global:{" "}
+          <span className="font-semibold text-gray-700">{globalQuota}</span> bimbingan/dosen
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Total Dosen dalam KK
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-gray-900">{rows.length}</p>
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-1">
+              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 w-fit">
+                <Users className="h-4 w-4" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Total Dosen</p>
+              <p className="text-2xl font-bold text-gray-900">{rows.length}</p>
+            </div>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Dosen Penuh</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-red-600">
-              {rows.filter((r) => r.status === "penuh").length}
-            </p>
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-1">
+              <div className="p-2 rounded-lg bg-gray-100 text-gray-600 w-fit">
+                <BookOpen className="h-4 w-4" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Historis</p>
+              <p className="text-2xl font-bold text-gray-700">{totalHistoricalStudents}</p>
+              <p className="text-[10px] text-gray-400">mahasiswa</p>
+            </div>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Dosen Tersedia</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-green-600">
-              {rows.filter((r) => r.status === "tersedia").length}
-            </p>
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-1">
+              <div className="p-2 rounded-lg bg-blue-50 text-blue-600 w-fit">
+                <Activity className="h-4 w-4" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Aktif</p>
+              <p className="text-2xl font-bold text-blue-700">{totalActiveStudents}</p>
+              <p className="text-[10px] text-gray-400">mahasiswa</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-1">
+              <div className="p-2 rounded-lg bg-green-50 text-green-600 w-fit">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Total Bimbingan</p>
+              <p className="text-2xl font-bold text-green-700">{totalBimbingan}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-1">
+              <div className="p-2 rounded-lg bg-orange-50 text-orange-600 w-fit">
+                <ClipboardCheck className="h-4 w-4" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Total DE</p>
+              <p className="text-2xl font-bold text-orange-700">{totalDE}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-1">
+              <div className="p-2 rounded-lg bg-purple-50 text-purple-600 w-fit">
+                <BarChart3 className="h-4 w-4" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Rata-rata Beban</p>
+              <p className="text-2xl font-bold text-purple-700">{avgLoad.toFixed(1)}</p>
+              <p className="text-[10px] text-gray-400">bimbingan/dosen</p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Dosen workload table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Beban Bimbingan Dosen — {myKK.nama}</CardTitle>
+          <CardTitle className="text-base">
+            Beban Dosen — {myKK.nama}
+          </CardTitle>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Historis = bimbingan selesai (fixed) · Aktif = bimbingan berjalan (expected) · Klik baris untuk detail
+          </p>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Dosen</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">NIP</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Bimbingan</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">
-                    Kuota ({globalQuota})
-                  </th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">DE</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">
-                      Belum ada dosen dalam Kelompok Keahlian ini
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((d) => (
-                    <tr key={d.id} className="border-b last:border-0 hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {d.name}
-                        {d.isKetua && (
-                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">
-                            Ketua KK
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">{d.identifier}</td>
-                      <td className="px-4 py-3 text-center font-medium">{d.bimbinganCount}</td>
-                      <td className="px-4 py-3 text-center text-gray-500">{globalQuota}</td>
-                      <td className="px-4 py-3 text-center">{d.deCount}</td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          variant={d.status === "penuh" ? "destructive" : d.status === "hampir penuh" ? "secondary" : "default"}
-                          className={
-                            d.status === "tersedia"
-                              ? "bg-green-100 text-green-700 hover:bg-green-100"
-                              : d.status === "hampir penuh"
-                              ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
-                              : ""
-                          }
-                        >
-                          {d.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DosenWorkloadTable rows={rows} globalQuota={globalQuota} kkName={myKK.nama} />
         </CardContent>
       </Card>
     </div>
