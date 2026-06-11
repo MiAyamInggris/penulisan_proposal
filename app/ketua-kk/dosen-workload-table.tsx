@@ -13,6 +13,8 @@ import { Crown } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+type HistoricalImportSource = "KAPRODI_FULL" | "KETUA_KK_TA_PAST" | null;
+
 type Assignment = {
   proposalId: string;
   role: "P1" | "P2";
@@ -28,12 +30,14 @@ type Assignment = {
   semester: string;
   isRetake: boolean;
   isContinuedActive?: boolean;
+  historicalImportSource?: HistoricalImportSource;
 };
 
 type DEAssignment = {
   proposalId: string;
   status: string;
   isHistoricalImport: boolean;
+  historicalImportSource?: HistoricalImportSource;
   studentName: string;
   nim: string;
   studentId: string;
@@ -102,6 +106,14 @@ function ContinuedActiveBadge() {
   );
 }
 
+function ImportTAPastBadge() {
+  return (
+    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-200 shrink-0 ml-1">
+      IMPORT_TA_PAST
+    </span>
+  );
+}
+
 function AcademicStageBadge({ stage }: { stage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2" }) {
   return stage === "TUGAS_AKHIR_2" ? (
     <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
@@ -145,6 +157,7 @@ function AssignmentTable({ assignments }: { assignments: Assignment[] }) {
                 <span className="font-medium text-gray-800">{a.studentName}</span>
                 {a.isRetake && <RetakeBadge />}
                 {a.isContinuedActive && <ContinuedActiveBadge />}
+                {a.historicalImportSource === "KETUA_KK_TA_PAST" && <ImportTAPastBadge />}
               </td>
               <td className="py-1.5 pr-3 text-center">
                 <span
@@ -205,6 +218,7 @@ function DETable({ assignments }: { assignments: DEAssignment[] }) {
               <td className="py-1.5 pr-3">
                 <span className="font-medium text-gray-800">{a.studentName}</span>
                 {a.isRetake && <RetakeBadge />}
+                {a.historicalImportSource === "KETUA_KK_TA_PAST" && <ImportTAPastBadge />}
               </td>
               <td className="py-1.5 pr-3 text-gray-600">{a.classCode}</td>
               <td className="py-1.5 pr-3 text-gray-600">{a.programCode}</td>

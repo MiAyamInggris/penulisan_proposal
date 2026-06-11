@@ -1,28 +1,16 @@
-import { prisma } from "@/lib/prisma";
-import { HistoricalImportClient } from "@/components/historical-import-client";
+import { HistoricalQuotaImportClient } from "@/components/historical-quota-import-client";
 
 export default async function KetuaKKImportPage() {
-  const classes = await prisma.class.findMany({
-    orderBy: [{ academicYear: "desc" }, { code: "asc" }],
-    select: {
-      id: true,
-      code: true,
-      name: true,
-      semester: true,
-      academicYear: true,
-      program: { select: { code: true } },
-    },
-  });
-
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Import Data Historis TA2</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Import Kuota Historis TA2</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Import data akademik historis untuk kelas dari seluruh Program Studi
+          Daftarkan mahasiswa Tugas Akhir 2 yang sudah ada sebelum sistem ini
+          digunakan, agar beban bimbingan dosen dihitung dengan akurat.
         </p>
       </div>
-      <HistoricalImportClient classes={classes} />
+      <HistoricalQuotaImportClient />
     </div>
   );
 }

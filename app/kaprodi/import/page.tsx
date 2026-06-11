@@ -12,7 +12,7 @@ export default async function KaprodiImportPage() {
   if (!prodi) redirect("/dosen-select-role");
 
   const classes = await prisma.class.findMany({
-    where: { program: { id: prodi.id } },
+    where: { program: { id: prodi.id }, isSystemClass: false },
     orderBy: [{ academicYear: "desc" }, { code: "asc" }],
     select: {
       id: true,

@@ -4,6 +4,7 @@ import { ClassTable } from "./class-table";
 export default async function ClassesPage() {
   const [classes, programs, dosenKelasUsers] = await Promise.all([
     prisma.class.findMany({
+      where: { isSystemClass: false },
       orderBy: { createdAt: "desc" },
       include: {
         program: true,

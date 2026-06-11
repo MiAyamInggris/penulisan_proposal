@@ -43,6 +43,7 @@ export default async function KetuaKKDashboard() {
             id: true,
             status: true,
             isHistoricalImport: true,
+            historicalImportSource: true,
             academicStage: true,
             titleId: true,
             supervisor1AssignedId: true,
@@ -68,6 +69,7 @@ export default async function KetuaKKDashboard() {
             id: true,
             status: true,
             isHistoricalImport: true,
+            historicalImportSource: true,
             academicStage: true,
             titleId: true,
             supervisor1AssignedId: true,
@@ -93,6 +95,7 @@ export default async function KetuaKKDashboard() {
             id: true,
             status: true,
             isHistoricalImport: true,
+            historicalImportSource: true,
             academicStage: true,
             enrollment: {
               select: {
@@ -162,6 +165,7 @@ export default async function KetuaKKDashboard() {
         academicYear: p.enrollment.class.academicYear,
         semester: p.enrollment.class.semester,
         isRetake: retakeStudentIds.has(p.enrollment.student.id),
+        historicalImportSource: p.historicalImportSource,
       }));
 
     const activeStudentIds = new Set(activeAssignments.map((a) => a.studentId));
@@ -183,12 +187,14 @@ export default async function KetuaKKDashboard() {
         semester: p.enrollment.class.semester,
         isRetake: retakeStudentIds.has(p.enrollment.student.id),
         isContinuedActive: activeStudentIds.has(p.enrollment.student.id),
+        historicalImportSource: p.historicalImportSource,
       }));
 
     const deAssignments = d.assignedDeskEvals.map((p) => ({
       proposalId: p.id,
       status: p.status,
       isHistoricalImport: p.isHistoricalImport,
+      historicalImportSource: p.historicalImportSource,
       studentName: p.enrollment.student.name,
       nim: p.enrollment.student.identifier,
       studentId: p.enrollment.student.id,

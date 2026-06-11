@@ -41,6 +41,11 @@ enum AcademicStage {
   TUGAS_AKHIR_2
 }
 
+enum HistoricalImportSource {
+  KAPRODI_FULL
+  KETUA_KK_TA_PAST
+}
+
 enum EprtStatus {
   PENDING
   VERIFIED
@@ -121,6 +126,7 @@ model Class {
   programId    String
   dosenKelasId String
   deDeadline   DateTime?
+  isSystemClass Boolean  @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -179,6 +185,7 @@ model Proposal {
   deskEvaluator        User?                  @relation("DeskEvaluator", fields: [deskEvaluatorId], references: [id])
 
   isHistoricalImport    Boolean  @default(false)
+  historicalImportSource HistoricalImportSource?
 
   bimbinganSessions     BimbinganSession[]
   nilaiBimbingan        NilaiBimbingan[]

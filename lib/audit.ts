@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 
 export type AuditAction =
   | "BULK_IMPORT_HISTORICAL"
+  | "BULK_IMPORT_HISTORICAL_QUOTA"
   | "ASSIGN_KAPRODI"
   | "REMOVE_KAPRODI"
   | "ASSIGN_PEMBIMBING_KK"

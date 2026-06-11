@@ -31,7 +31,7 @@ export default async function KaprodiDashboardPage() {
   const totalSupervisionWorkload = totalTA2Students + totalProposalStudents;
 
   const classes = await prisma.class.findMany({
-    where: { program: { id: prodi.id } },
+    where: { program: { id: prodi.id }, isSystemClass: false },
     orderBy: [{ academicYear: "desc" }, { code: "asc" }],
     select: {
       id: true,

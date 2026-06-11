@@ -21,7 +21,7 @@ const navItems = [
   },
   {
     href: "/ketua-kk/import",
-    label: "Import Historis TA2",
+    label: "Import Kuota Historis TA2",
     icon: <Upload className="h-4 w-4" />,
   },
   {

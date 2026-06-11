@@ -54,14 +54,13 @@ export async function bulkImportHistorical(
   const session = await auth();
   if (!session) throw new Error("Tidak terautentikasi");
 
-  const { role, isKaprodi, isKetua } = session.user;
+  const { role, isKaprodi } = session.user;
   const isAdmin = role === "ADMIN";
   const isKaprodiUser = role === "DOSEN" && !!isKaprodi;
-  const isKetuaUser = role === "DOSEN" && !!isKetua;
-  if (!isAdmin && !isKaprodiUser && !isKetuaUser) {
+  if (!isAdmin && !isKaprodiUser) {
     throw new Error("Tidak terautentikasi");
   }
-  const auditRole = isAdmin ? "ADMIN" : isKaprodiUser ? "KAPRODI" : "KETUA_KK";
+  const auditRole = isAdmin ? "ADMIN" : "KAPRODI";
 
   let prodi: { id: string; name: string; code: string } | null = null;
   if (isKaprodiUser) {
@@ -75,7 +74,7 @@ export async function bulkImportHistorical(
   });
   const actorName = actorUser?.name ?? "Pengguna";
 
-  // Validate class belongs to kaprodi's prodi (Kaprodi only — KK/Admin can import any class)
+  // Validate class belongs to kaprodi's prodi (Kaprodi only — Admin can import any class)
   const targetClass = await prisma.class.findUnique({
     where: { id: classId },
     include: { program: true },
@@ -311,6 +310,7 @@ export async function bulkImportHistorical(
         titleId: judul,
         status: "COMPLETED" as const,
         isHistoricalImport: true,
+        historicalImportSource: "KAPRODI_FULL" as const,
         academicStage: "TUGAS_AKHIR_2" as const,
         supervisor1AssignedId: sv1?.id ?? null,
         supervisor2AssignedId: sv2?.id ?? null,
@@ -505,7 +505,6 @@ export async function bulkImportHistorical(
   revalidatePath("/kaprodi/rekap");
   revalidatePath("/ketua-kk/dashboard");
   revalidatePath("/ketua-kk/alokasi-pembimbing");
-  revalidatePath("/ketua-kk/import");
   revalidatePath("/admin/audit-log");
 
   // Batch-insert per-score audit entries
