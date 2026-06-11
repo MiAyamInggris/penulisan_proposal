@@ -25,6 +25,13 @@ export async function GET() {
       "Kode Pembimbing 1": "CCS",
       "Kode Pembimbing 2": "",
     },
+    {
+      NIM: "6701180003",
+      "Nama Mahasiswa": "Budi Santoso",
+      "Program Studi": "DS",
+      "Kode Pembimbing 1": "",
+      "Kode Pembimbing 2": "",
+    },
   ];
 
   const infoRows = [
@@ -43,15 +50,21 @@ export async function GET() {
     { Keterangan: "  NIM — Nomor Induk Mahasiswa" },
     { Keterangan: "  Nama Mahasiswa — Nama lengkap mahasiswa" },
     { Keterangan: "  Program Studi — Kode program studi: RPL, IF, DS, atau SI" },
-    { Keterangan: "  Kode Pembimbing 1 — Kode dosen pembimbing 1 (wajib)" },
     { Keterangan: "" },
     { Keterangan: "KOLOM OPSIONAL:" },
-    { Keterangan: "  Kode Pembimbing 2 — Kode dosen pembimbing 2 (kosongkan jika hanya 1 pembimbing)" },
+    { Keterangan: "  Kode Pembimbing 1 — Kode dosen pembimbing 1" },
+    { Keterangan: "  Kode Pembimbing 2 — Kode dosen pembimbing 2" },
+    { Keterangan: "  Jika Kode Pembimbing 1/2 dikosongkan atau tidak dikenali, mahasiswa" },
+    { Keterangan: "  tetap diimpor dengan status 'Belum Ditetapkan'. Pembimbing dapat" },
+    { Keterangan: "  ditugaskan kemudian melalui menu Ketua KK > Mahasiswa Belum" },
+    { Keterangan: "  Memiliki Pembimbing > Imported TA2." },
     { Keterangan: "" },
     { Keterangan: "CATATAN:" },
     { Keterangan: "  - Mahasiswa yang belum terdaftar akan dibuat otomatis (password = NIM)" },
     { Keterangan: "  - Setiap mahasiswa otomatis ditempatkan di kelas sistem 'Tugas Akhir - Past'" },
     { Keterangan: "  - Mahasiswa akan dihitung sebagai 'Historical TA2' pada beban dosen terkait" },
+    { Keterangan: "  - Jika NIM SUDAH TERDAFTAR di sistem, baris akan DILEWATI sepenuhnya" },
+    { Keterangan: "    (data mahasiswa, proposal, dan pembimbing yang sudah ada TIDAK akan ditimpa)" },
     { Keterangan: "  - Jangan ubah nama kolom pada sheet 'Template'" },
   ];
 

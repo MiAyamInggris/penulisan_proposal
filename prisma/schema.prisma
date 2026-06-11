@@ -186,6 +186,7 @@ model Proposal {
 
   isHistoricalImport    Boolean  @default(false)
   historicalImportSource HistoricalImportSource?
+  importBatchId         String?
 
   bimbinganSessions     BimbinganSession[]
   nilaiBimbingan        NilaiBimbingan[]

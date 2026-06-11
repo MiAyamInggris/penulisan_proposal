@@ -50,7 +50,7 @@ export async function assignSupervisorsKK(
 
   const current = await prisma.proposal.findUnique({
     where: { id: proposalId },
-    select: { status: true },
+    select: { status: true, enrollment: { select: { student: { select: { identifier: true } } } } },
   });
 
   const shouldAdvanceStatus =
@@ -66,6 +66,7 @@ export async function assignSupervisorsKK(
   });
 
   revalidatePath("/ketua-kk/alokasi-pembimbing");
+  revalidatePath("/ketua-kk/mahasiswa-belum-pembimbing");
   revalidatePath("/dosen-kelas/supervisor");
   revalidatePath("/mahasiswa/dashboard");
   revalidatePath("/dosen/pembimbing");
@@ -73,14 +74,20 @@ export async function assignSupervisorsKK(
 
   const session = await auth();
   if (session?.user?.id) {
-    const sv1Name = s1User?.name;
-    const sv2User = s2 ? await prisma.user.findUnique({ where: { id: s2 }, select: { name: true } }) : null;
+    const sv1Full = await prisma.user.findUnique({ where: { id: s1 }, select: { name: true, kodeDosen: true } });
+    const sv2User = s2 ? await prisma.user.findUnique({ where: { id: s2 }, select: { name: true, kodeDosen: true } }) : null;
+    const nim = current?.enrollment.student.identifier;
+    let message = `Ketua KK assigned Pembimbing 1 = ${sv1Full?.kodeDosen ?? sv1Full?.name} to mahasiswa ${nim}.`;
+    if (sv2User) {
+      message += ` Pembimbing 2 = ${sv2User.kodeDosen ?? sv2User.name}.`;
+    }
     await logAudit(session.user.id, "KETUA_KK", "ASSIGN_PEMBIMBING_KK", {
       proposalId,
       supervisor1Id: s1,
-      supervisor1Name: sv1Name,
+      supervisor1Name: sv1Full?.name,
       supervisor2Id: s2,
       supervisor2Name: sv2User?.name ?? null,
+      message,
     }, "PROPOSAL", proposalId);
   }
 

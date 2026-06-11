@@ -7,17 +7,36 @@ import { getOrCreateTAPastClass } from "@/lib/system-class";
 import { logAudit } from "@/lib/audit";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "crypto";
 
 const EMAIL_DOMAIN = "student.telkomuniversity.ac.id";
 const PRODI_CODES: ProdiCode[] = ["RPL", "IF", "DS", "SI"];
 
+export type HistoricalQuotaImportRowStatus =
+  | "Imported"
+  | "Missing Pembimbing"
+  | "Skipped Existing"
+  | "Invalid Data"
+  | "Failed";
+
 export type HistoricalQuotaImportResult = {
   total: number;
   imported: number;
-  updated: number;
-  failed: number;
+  missingPembimbing: number;
+  skippedExisting: number;
+  invalidData: number;
+  failedRows: number;
+  importBatchId: string;
   warnings: string[];
   errors: Array<{ row: number; nim?: string; reason: string }>;
+  rows: Array<{
+    row: number;
+    nim: string;
+    nama: string;
+    prodi: string;
+    status: HistoricalQuotaImportRowStatus;
+    reason?: string;
+  }>;
 };
 
 function resolveProdiCode(raw: string): ProdiCode | null {
@@ -45,18 +64,24 @@ export async function bulkImportHistoricalQuota(
   const buffer = Buffer.from(await file.arrayBuffer());
   const wb = read(buffer, { type: "buffer" });
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  const rows = utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+  const sheetRows = utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+
+  const importBatchId = randomUUID();
 
   const result: HistoricalQuotaImportResult = {
-    total: rows.length,
+    total: sheetRows.length,
     imported: 0,
-    updated: 0,
-    failed: 0,
+    missingPembimbing: 0,
+    skippedExisting: 0,
+    invalidData: 0,
+    failedRows: 0,
+    importBatchId,
     warnings: [],
     errors: [],
+    rows: [],
   };
 
-  if (rows.length === 0) return result;
+  if (sheetRows.length === 0) return result;
 
   // Pre-load programs
   const programs = await prisma.program.findMany({
@@ -85,10 +110,11 @@ export async function bulkImportHistoricalQuota(
 
   const seenNims = new Set<string>();
   const touchedProdiCodes = new Set<string>();
+  const skippedNims: string[] = [];
 
-  for (let i = 0; i < rows.length; i++) {
+  for (let i = 0; i < sheetRows.length; i++) {
     const rowNum = i + 2;
-    const row = rows[i];
+    const row = sheetRows[i];
 
     const nim = String(row["NIM"] ?? row["nim"] ?? "").trim();
     const nama = String(row["Nama Mahasiswa"] ?? row["Nama"] ?? "").trim();
@@ -97,50 +123,65 @@ export async function bulkImportHistoricalQuota(
     const kode2Raw = String(row["Kode Pembimbing 2"] ?? "").trim();
 
     if (!nim) {
-      result.failed++;
+      result.invalidData++;
       result.errors.push({ row: rowNum, reason: "Kolom NIM wajib diisi" });
+      result.rows.push({ row: rowNum, nim: "", nama, prodi: prodiRaw, status: "Invalid Data", reason: "Kolom NIM wajib diisi" });
       continue;
     }
     if (!nama) {
-      result.failed++;
+      result.invalidData++;
       result.errors.push({ row: rowNum, nim, reason: "Kolom Nama Mahasiswa wajib diisi" });
+      result.rows.push({ row: rowNum, nim, nama: "", prodi: prodiRaw, status: "Invalid Data", reason: "Kolom Nama Mahasiswa wajib diisi" });
       continue;
     }
     if (seenNims.has(nim.toLowerCase())) {
-      result.failed++;
+      result.invalidData++;
       result.errors.push({ row: rowNum, nim, reason: "NIM duplikat dalam file" });
+      result.rows.push({ row: rowNum, nim, nama, prodi: prodiRaw, status: "Invalid Data", reason: "NIM duplikat dalam file" });
       continue;
     }
     seenNims.add(nim.toLowerCase());
 
     const prodiCode = resolveProdiCode(prodiRaw);
     if (!prodiCode) {
-      result.failed++;
+      result.invalidData++;
       result.errors.push({
         row: rowNum,
         nim,
         reason: `Program Studi '${prodiRaw}' tidak dikenali (gunakan RPL/IF/DS/SI)`,
       });
+      result.rows.push({ row: rowNum, nim, nama, prodi: prodiRaw, status: "Invalid Data", reason: `Program Studi '${prodiRaw}' tidak dikenali` });
       continue;
     }
     const program = programByCode.get(prodiCode);
     if (!program) {
-      result.failed++;
+      result.invalidData++;
       result.errors.push({ row: rowNum, nim, reason: `Program Studi ${prodiCode} tidak ditemukan` });
+      result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Invalid Data", reason: `Program Studi ${prodiCode} tidak ditemukan` });
       continue;
     }
 
-    if (!kode1Raw) {
-      result.failed++;
-      result.errors.push({ row: rowNum, nim, reason: "Kolom Kode Pembimbing 1 wajib diisi" });
+    // --- NIM already exists: skip the row entirely, never overwrite ---
+    if (mahasiswaByNim.has(nim.toLowerCase())) {
+      result.skippedExisting++;
+      skippedNims.push(nim);
+      result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Skipped Existing", reason: "NIM sudah terdaftar — baris dilewati" });
       continue;
     }
-    const sv1 = dosenByKode.get(kode1Raw.toLowerCase());
-    if (!sv1) {
-      result.failed++;
-      result.errors.push({ row: rowNum, nim, reason: `Pembimbing 1 dengan kode '${kode1Raw}' tidak ditemukan` });
-      continue;
+
+    // --- Resolve pembimbing — missing/unmatched no longer fails the row ---
+    let sv1: { id: string; name: string; kodeDosen: string | null } | undefined;
+    if (kode1Raw) {
+      sv1 = dosenByKode.get(kode1Raw.toLowerCase());
+      if (!sv1) {
+        result.warnings.push(
+          `Baris ${rowNum} (${nim}): Pembimbing 1 dengan kode '${kode1Raw}' tidak ditemukan — pembimbing belum ditetapkan`
+        );
+      }
+    } else {
+      result.warnings.push(`Baris ${rowNum} (${nim}): Kode Pembimbing 1 kosong — pembimbing belum ditetapkan`);
     }
+
     let sv2: { id: string; name: string; kodeDosen: string | null } | undefined;
     if (kode2Raw) {
       sv2 = dosenByKode.get(kode2Raw.toLowerCase());
@@ -157,12 +198,13 @@ export async function bulkImportHistoricalQuota(
       if (!taPastClassId) {
         const fallbackDosenId = isKetuaUser ? session.user.id : program.kaprodiId;
         if (!fallbackDosenId) {
-          result.failed++;
+          result.failedRows++;
           result.errors.push({
             row: rowNum,
             nim,
             reason: `Program Studi ${prodiCode} belum memiliki Kaprodi — tidak dapat membuat kelas sistem Tugas Akhir - Past`,
           });
+          result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Failed", reason: `Program Studi ${prodiCode} belum memiliki Kaprodi` });
           continue;
         }
         const taPastClass = await getOrCreateTAPastClass(program.id, fallbackDosenId);
@@ -170,26 +212,20 @@ export async function bulkImportHistoricalQuota(
         taPastClassByProgramId.set(program.id, taPastClassId);
       }
 
-      // --- Resolve or create mahasiswa ---
-      let userId: string;
-      const existingUser = mahasiswaByNim.get(nim.toLowerCase());
-      if (existingUser) {
-        userId = existingUser.id;
-      } else {
-        const hashed = await bcrypt.hash(nim, 10);
-        const newUser = await prisma.user.create({
-          data: {
-            name: nama,
-            email: `${nim}@${EMAIL_DOMAIN}`,
-            password: hashed,
-            role: "MAHASISWA",
-            identifier: nim,
-          },
-          select: { id: true },
-        });
-        userId = newUser.id;
-        mahasiswaByNim.set(nim.toLowerCase(), { id: userId, identifier: nim });
-      }
+      // --- Create mahasiswa (NIM not found among existing users) ---
+      const hashed = await bcrypt.hash(nim, 10);
+      const newUser = await prisma.user.create({
+        data: {
+          name: nama,
+          email: `${nim}@${EMAIL_DOMAIN}`,
+          password: hashed,
+          role: "MAHASISWA",
+          identifier: nim,
+        },
+        select: { id: true },
+      });
+      const userId = newUser.id;
+      mahasiswaByNim.set(nim.toLowerCase(), { id: userId, identifier: nim });
 
       // --- Resolve or create the (hidden, inactive) enrollment in Tugas Akhir - Past ---
       let enrollment = await prisma.classEnrollment.findUnique({
@@ -204,36 +240,50 @@ export async function bulkImportHistoricalQuota(
         enrollment = created;
       }
 
-      // --- Upsert the historical quota proposal ---
-      const proposalData = {
-        titleId: "Data Historis Kuota TA2",
-        status: "COMPLETED" as const,
-        academicStage: "TUGAS_AKHIR_2" as const,
-        isHistoricalImport: true,
-        historicalImportSource: "KETUA_KK_TA_PAST" as const,
-        supervisor1AssignedId: sv1.id,
-        supervisor2AssignedId: sv2?.id ?? null,
-      };
-
       if (enrollment.proposal) {
-        await prisma.proposal.update({ where: { id: enrollment.proposal.id }, data: proposalData });
-        result.updated++;
+        // Defensive: a TA-Past record already exists for this (newly created) user — skip.
+        result.skippedExisting++;
+        skippedNims.push(nim);
+        result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Skipped Existing", reason: "Data Tugas Akhir - Past sudah ada — baris dilewati" });
+        continue;
+      }
+
+      // --- Create the historical quota proposal ---
+      await prisma.proposal.create({
+        data: {
+          enrollmentId: enrollment.id,
+          titleId: "Data Historis Kuota TA2",
+          status: "COMPLETED",
+          academicStage: "TUGAS_AKHIR_2",
+          isHistoricalImport: true,
+          historicalImportSource: "KETUA_KK_TA_PAST",
+          importBatchId,
+          supervisor1AssignedId: sv1?.id ?? null,
+          supervisor2AssignedId: sv2?.id ?? null,
+        },
+      });
+
+      result.imported++;
+      if (!sv1) {
+        result.missingPembimbing++;
+        result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Missing Pembimbing", reason: "Pembimbing 1 belum ditetapkan" });
       } else {
-        await prisma.proposal.create({ data: { enrollmentId: enrollment.id, ...proposalData } });
-        result.imported++;
+        result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Imported" });
       }
 
       touchedProdiCodes.add(prodiCode);
     } catch (err: unknown) {
-      result.failed++;
+      result.failedRows++;
       const msg = err instanceof Error ? err.message : "Gagal memproses data";
       result.errors.push({ row: rowNum, nim, reason: msg });
+      result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Failed", reason: msg });
     }
   }
 
   revalidatePath("/ketua-kk/dashboard");
   revalidatePath("/ketua-kk/alokasi-pembimbing");
   revalidatePath("/ketua-kk/import");
+  revalidatePath("/ketua-kk/mahasiswa-belum-pembimbing");
   revalidatePath("/kaprodi/dashboard");
   revalidatePath("/admin/audit-log");
 
@@ -244,10 +294,14 @@ export async function bulkImportHistoricalQuota(
     {
       total: result.total,
       imported: result.imported,
-      updated: result.updated,
-      failed: result.failed,
+      missingPembimbing: result.missingPembimbing,
+      skippedExisting: result.skippedExisting,
+      invalidData: result.invalidData,
+      failedRows: result.failedRows,
+      importBatchId,
       programs: [...touchedProdiCodes],
-      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} mengimpor ${result.imported + result.updated} mahasiswa ke Tugas Akhir - Past`,
+      skippedNims,
+      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} imported ${result.imported} TA2 students.${skippedNims.length > 0 ? ` ${skippedNims.length} mahasiswa skipped because NIM already exists.` : ""}`,
     },
     "CLASS"
   );
