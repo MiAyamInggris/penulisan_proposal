@@ -25,12 +25,13 @@ type Assignment = {
   studentId: string;
   classCode: string;
   programCode: string;
-  academicStage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2";
+  academicStage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2" | "COMPLETED";
   academicYear: string;
   semester: string;
   isRetake: boolean;
   isContinuedActive?: boolean;
   historicalImportSource?: HistoricalImportSource;
+  tanggalYudisium?: string | null;
 };
 
 type DEAssignment = {
@@ -43,7 +44,7 @@ type DEAssignment = {
   studentId: string;
   classCode: string;
   programCode: string;
-  academicStage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2";
+  academicStage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2" | "COMPLETED";
   academicYear: string;
   semester: string;
   isRetake: boolean;
@@ -57,6 +58,7 @@ export type DosenRow = {
   isKetua: boolean;
   historicalCount: number;
   activeCount: number;
+  graduatedCount: number;
   deCount: number;
   potentialTotal: number;
   duplicateActiveCount: number;
@@ -65,6 +67,7 @@ export type DosenRow = {
   loadStatus: "ringan" | "normal" | "hampir-penuh" | "melebihi-kuota";
   historicalAssignments: Assignment[];
   activeAssignments: Assignment[];
+  graduatedAssignments: Assignment[];
   deAssignments: DEAssignment[];
 };
 
@@ -79,6 +82,7 @@ const STATUS_LABELS: Record<string, string> = {
   SEMINAR_REGISTERED: "Daftar Seminar",
   SEMINAR_COMPLETED: "Seminar Selesai",
   COMPLETED: "Selesai",
+  LULUS: "Lulus",
 };
 
 const LOAD_CONFIG = {
@@ -114,7 +118,14 @@ function ImportTAPastBadge() {
   );
 }
 
-function AcademicStageBadge({ stage }: { stage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2" }) {
+function AcademicStageBadge({ stage }: { stage: "PENULISAN_PROPOSAL" | "TUGAS_AKHIR_2" | "COMPLETED" }) {
+  if (stage === "COMPLETED") {
+    return (
+      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+        Lulus
+      </span>
+    );
+  }
   return stage === "TUGAS_AKHIR_2" ? (
     <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-green-100 text-green-700 border border-green-200">
       Tugas Akhir 2
@@ -350,6 +361,17 @@ function DosenDetailDialog({
           <AssignmentTable assignments={row.activeAssignments} />
         </div>
 
+        {/* Graduated TA2 (Lulus) */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            Graduated TA2 (Lulus)
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700">
+              {row.graduatedCount}
+            </span>
+          </h4>
+          <AssignmentTable assignments={row.graduatedAssignments} />
+        </div>
+
         {/* Desk Evaluator */}
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -400,6 +422,10 @@ export function DosenWorkloadTable({
                 <span className="block text-[10px] font-normal text-gray-400">(fixed)</span>
               </th>
               <th className="text-center px-4 py-3 font-medium">
+                Graduated TA2
+                <span className="block text-[10px] font-normal text-gray-400">(lulus)</span>
+              </th>
+              <th className="text-center px-4 py-3 font-medium">
                 Active Proposal
                 <span className="block text-[10px] font-normal text-gray-400">(expected)</span>
               </th>
@@ -434,6 +460,9 @@ export function DosenWorkloadTable({
                   <td className="px-4 py-3 text-center text-gray-500">{globalQuota}</td>
                   <td className="px-4 py-3 text-center">
                     <span className="font-semibold text-gray-700">{d.historicalCount}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="font-medium text-emerald-700">{d.graduatedCount}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="font-semibold text-blue-700">{d.activeCount}</span>

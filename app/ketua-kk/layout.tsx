@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
-import { LayoutDashboard, Users, Sliders, Settings, Upload, UserX } from "lucide-react";
+import { LayoutDashboard, Users, Sliders, Settings, Upload, UserX, GraduationCap } from "lucide-react";
 
 const navItems = [
   {
@@ -18,6 +18,11 @@ const navItems = [
     href: "/ketua-kk/mahasiswa-belum-pembimbing",
     label: "Mahasiswa Belum Memiliki Pembimbing",
     icon: <UserX className="h-4 w-4" />,
+  },
+  {
+    href: "/ketua-kk/update-lulus",
+    label: "Update Mahasiswa Lulus",
+    icon: <GraduationCap className="h-4 w-4" />,
   },
   {
     href: "/ketua-kk/kuota",

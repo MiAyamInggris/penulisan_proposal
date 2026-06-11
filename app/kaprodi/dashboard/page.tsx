@@ -29,6 +29,9 @@ export default async function KaprodiDashboardPage() {
     supervisionProposals.filter((p) => p.academicStage === "PENULISAN_PROPOSAL")
   );
   const totalSupervisionWorkload = totalTA2Students + totalProposalStudents;
+  const totalLulusYudisium = countUniqueStudents(
+    supervisionProposals.filter((p) => p.academicStage === "COMPLETED")
+  );
 
   const classes = await prisma.class.findMany({
     where: { program: { id: prodi.id }, isSystemClass: false },
@@ -175,7 +178,7 @@ export default async function KaprodiDashboardPage() {
       </div>
 
       {/* Supervision workload (program-wide) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
@@ -215,6 +218,21 @@ export default async function KaprodiDashboardPage() {
               <div>
                 <p className="text-xs text-gray-500">Total Supervision Workload</p>
                 <p className="text-2xl font-bold text-purple-700">{totalSupervisionWorkload}</p>
+                <p className="text-[10px] text-gray-400">mahasiswa</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Total Lulus (Yudisium)</p>
+                <p className="text-2xl font-bold text-emerald-700">{totalLulusYudisium}</p>
                 <p className="text-[10px] text-gray-400">mahasiswa</p>
               </div>
             </div>

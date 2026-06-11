@@ -1,0 +1,6 @@
+ALTER TYPE "ProposalStatus" ADD VALUE IF NOT EXISTS 'LULUS';
+ALTER TYPE "AcademicStage" ADD VALUE IF NOT EXISTS 'COMPLETED';
+
+ALTER TABLE "Proposal" ADD COLUMN "tanggalYudisium" TIMESTAMP(3);
+ALTER TABLE "Proposal" ADD COLUMN "graduatedAt" TIMESTAMP(3);
+ALTER TABLE "Proposal" ADD COLUMN "graduationImportBatchId" TEXT;

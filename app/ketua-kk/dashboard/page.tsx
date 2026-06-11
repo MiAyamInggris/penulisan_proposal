@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getGlobalQuota } from "@/lib/settings";
 import { getMyKK } from "@/lib/kk";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Users, BookOpen, Activity, ClipboardCheck, BarChart3, TrendingUp } from "lucide-react";
+import { AlertCircle, Users, BookOpen, Activity, ClipboardCheck, BarChart3, TrendingUp, GraduationCap } from "lucide-react";
 import { DosenWorkloadTable } from "../dosen-workload-table";
 import type { DosenRow } from "../dosen-workload-table";
 
@@ -48,6 +48,7 @@ export default async function KetuaKKDashboard() {
             titleId: true,
             supervisor1AssignedId: true,
             supervisor2AssignedId: true,
+            tanggalYudisium: true,
             enrollment: {
               select: {
                 class: {
@@ -74,6 +75,7 @@ export default async function KetuaKKDashboard() {
             titleId: true,
             supervisor1AssignedId: true,
             supervisor2AssignedId: true,
+            tanggalYudisium: true,
             enrollment: {
               select: {
                 class: {
@@ -150,7 +152,7 @@ export default async function KetuaKKDashboard() {
     ];
 
     const activeAssignments = allBimbingan
-      .filter((p) => p.status !== "COMPLETED")
+      .filter((p) => p.status !== "COMPLETED" && p.status !== "LULUS")
       .map((p) => ({
         proposalId: p.id,
         role: p.role,
@@ -190,6 +192,27 @@ export default async function KetuaKKDashboard() {
         historicalImportSource: p.historicalImportSource,
       }));
 
+    const graduatedAssignments = allBimbingan
+      .filter((p) => p.status === "LULUS")
+      .map((p) => ({
+        proposalId: p.id,
+        role: p.role,
+        titleId: p.titleId,
+        status: p.status,
+        studentName: p.enrollment.student.name,
+        nim: p.enrollment.student.identifier,
+        studentId: p.enrollment.student.id,
+        classCode: p.enrollment.class.code,
+        programCode: p.enrollment.class.program.code,
+        academicStage: p.academicStage,
+        academicYear: p.enrollment.class.academicYear,
+        semester: p.enrollment.class.semester,
+        isRetake: retakeStudentIds.has(p.enrollment.student.id),
+        isContinuedActive: activeStudentIds.has(p.enrollment.student.id),
+        historicalImportSource: p.historicalImportSource,
+        tanggalYudisium: p.tanggalYudisium?.toISOString() ?? null,
+      }));
+
     const deAssignments = d.assignedDeskEvals.map((p) => ({
       proposalId: p.id,
       status: p.status,
@@ -212,6 +235,7 @@ export default async function KetuaKKDashboard() {
     // dosen. Count unique students so each only contributes once to the
     // expected/active quota.
     const activeCount = activeStudentIds.size;
+    const graduatedCount = new Set(graduatedAssignments.map((a) => a.studentId)).size;
     const deCount = deAssignments.length;
     const historicalStudentIds = new Set(historicalAssignments.map((a) => a.studentId));
     const potentialTotal = new Set([...historicalStudentIds, ...activeStudentIds]).size;
@@ -236,6 +260,7 @@ export default async function KetuaKKDashboard() {
       isKetua: d.isKetua,
       historicalCount,
       activeCount,
+      graduatedCount,
       deCount,
       potentialTotal,
       duplicateActiveCount,
@@ -244,6 +269,7 @@ export default async function KetuaKKDashboard() {
       loadStatus,
       historicalAssignments,
       activeAssignments,
+      graduatedAssignments,
       deAssignments,
     };
   });
@@ -254,6 +280,9 @@ export default async function KetuaKKDashboard() {
   ).size;
   const totalActiveStudents = new Set(
     rows.flatMap((r) => r.activeAssignments.map((a) => a.studentId))
+  ).size;
+  const totalGraduatedStudents = new Set(
+    rows.flatMap((r) => r.graduatedAssignments.map((a) => a.studentId))
   ).size;
   const totalBimbingan = rows.reduce((a, r) => a + r.potentialTotal, 0);
   const totalDE = rows.reduce((a, r) => a + r.deCount, 0);
@@ -270,7 +299,7 @@ export default async function KetuaKKDashboard() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <Card>
           <CardContent className="pt-5">
             <div className="flex flex-col gap-1">
@@ -289,8 +318,21 @@ export default async function KetuaKKDashboard() {
               <div className="p-2 rounded-lg bg-gray-100 text-gray-600 w-fit">
                 <BookOpen className="h-4 w-4" />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Historical TA2</p>
+              <p className="text-xs text-gray-500 mt-1">Historical TA2 Active</p>
               <p className="text-2xl font-bold text-gray-700">{totalHistoricalStudents}</p>
+              <p className="text-[10px] text-gray-400">mahasiswa</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-1">
+              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 w-fit">
+                <GraduationCap className="h-4 w-4" />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Historical TA2 Graduated</p>
+              <p className="text-2xl font-bold text-emerald-700">{totalGraduatedStudents}</p>
               <p className="text-[10px] text-gray-400">mahasiswa</p>
             </div>
           </CardContent>

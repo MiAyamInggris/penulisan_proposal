@@ -60,6 +60,8 @@ const ACTION_LABELS: Record<string, string> = {
   ASSIGN_PEMBIMBING_KK: "Penugasan Pembimbing",
   KK_SYNC: "Sinkronisasi KK",
   DOSEN_SYNC: "Sinkronisasi Dosen",
+  GRADUATE_UPDATE_IMPORT: "Update Mahasiswa Lulus (Bulk)",
+  GRADUATE_STUDENT: "Update Mahasiswa Lulus",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -69,6 +71,8 @@ const ACTION_COLORS: Record<string, string> = {
   ASSIGN_PEMBIMBING_KK: "bg-blue-100 text-blue-800",
   KK_SYNC: "bg-purple-100 text-purple-800",
   DOSEN_SYNC: "bg-gray-100 text-gray-700",
+  GRADUATE_UPDATE_IMPORT: "bg-emerald-100 text-emerald-800",
+  GRADUATE_STUDENT: "bg-emerald-50 text-emerald-700",
 };
 
 const ROLE_LABELS: Record<string, string> = {

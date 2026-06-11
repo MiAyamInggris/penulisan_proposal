@@ -11,7 +11,9 @@ export type AuditAction =
   | "DOSEN_SYNC"
   | "SCORE_CREATE"
   | "SCORE_UPDATE"
-  | "ACADEMIC_STAGE_PROMOTION";
+  | "ACADEMIC_STAGE_PROMOTION"
+  | "GRADUATE_UPDATE_IMPORT"
+  | "GRADUATE_STUDENT";
 
 export type AssessmentType =
   | "NILAI_BIMBINGAN"

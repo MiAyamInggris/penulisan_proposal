@@ -34,11 +34,13 @@ enum ProposalStatus {
   SEMINAR_REGISTERED
   SEMINAR_COMPLETED
   COMPLETED
+  LULUS
 }
 
 enum AcademicStage {
   PENULISAN_PROPOSAL
   TUGAS_AKHIR_2
+  COMPLETED
 }
 
 enum HistoricalImportSource {
@@ -187,6 +189,10 @@ model Proposal {
   isHistoricalImport    Boolean  @default(false)
   historicalImportSource HistoricalImportSource?
   importBatchId         String?
+
+  tanggalYudisium         DateTime?
+  graduatedAt             DateTime?
+  graduationImportBatchId String?
 
   bimbinganSessions     BimbinganSession[]
   nilaiBimbingan        NilaiBimbingan[]
