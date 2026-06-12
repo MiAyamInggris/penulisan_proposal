@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, X, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Search, X, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -130,14 +130,16 @@ function useUpdateParam() {
 export function ViewTabs({ view }: { view: string }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
 
-  const go = (v: string) => router.push(`${pathname ?? ""}?view=${v}`);
+  const go = (v: string) => startTransition(() => router.push(`${pathname ?? ""}?view=${v}`));
 
   return (
-    <div className="flex gap-1 border-b mb-2">
+    <div className="flex gap-1 border-b mb-2 items-center">
       <button
         onClick={() => go("admin")}
-        className={`px-4 py-1.5 text-sm font-medium rounded-t border-b-2 transition-colors ${
+        disabled={isPending}
+        className={`px-4 py-1.5 text-sm font-medium rounded-t border-b-2 transition-colors disabled:opacity-60 ${
           view !== "scores"
             ? "border-[#C8102E] text-[#C8102E]"
             : "border-transparent text-gray-500 hover:text-gray-700"
@@ -147,7 +149,8 @@ export function ViewTabs({ view }: { view: string }) {
       </button>
       <button
         onClick={() => go("scores")}
-        className={`px-4 py-1.5 text-sm font-medium rounded-t border-b-2 transition-colors ${
+        disabled={isPending}
+        className={`px-4 py-1.5 text-sm font-medium rounded-t border-b-2 transition-colors disabled:opacity-60 ${
           view === "scores"
             ? "border-[#C8102E] text-[#C8102E]"
             : "border-transparent text-gray-500 hover:text-gray-700"
@@ -155,6 +158,7 @@ export function ViewTabs({ view }: { view: string }) {
       >
         Log Nilai
       </button>
+      {isPending && <Loader2 className="h-4 w-4 ml-2 animate-spin text-gray-400" />}
     </div>
   );
 }
@@ -174,11 +178,12 @@ export function AuditLogFilters({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const clearAll = () => {
     const params = new URLSearchParams(searchParams.toString());
     ["search", "action", "role", "page"].forEach((k) => params.delete(k));
-    router.push(`${pathname ?? ""}?${params.toString()}`);
+    startTransition(() => router.push(`${pathname ?? ""}?${params.toString()}`));
   };
 
   const hasFilters = search || action || role;
@@ -191,14 +196,19 @@ export function AuditLogFilters({
           className="pl-8 w-56"
           placeholder="Cari nama/email..."
           defaultValue={search}
-          onBlur={(e) => update("search", e.target.value)}
+          disabled={isPending}
+          onBlur={(e) => startTransition(() => update("search", e.target.value))}
           onKeyDown={(e) => {
-            if (e.key === "Enter") update("search", (e.target as HTMLInputElement).value);
+            if (e.key === "Enter") startTransition(() => update("search", (e.target as HTMLInputElement).value));
           }}
         />
       </div>
 
-      <Select value={action || "_all"} onValueChange={(v) => { if (v) update("action", v === "_all" ? "" : v); }}>
+      <Select
+        value={action || "_all"}
+        disabled={isPending}
+        onValueChange={(v) => { if (v) startTransition(() => update("action", v === "_all" ? "" : v)); }}
+      >
         <SelectTrigger className="w-48">
           <SelectValue placeholder="Semua aksi" />
         </SelectTrigger>
@@ -210,7 +220,11 @@ export function AuditLogFilters({
         </SelectContent>
       </Select>
 
-      <Select value={role || "_all"} onValueChange={(v) => { if (v) update("role", v === "_all" ? "" : v); }}>
+      <Select
+        value={role || "_all"}
+        disabled={isPending}
+        onValueChange={(v) => { if (v) startTransition(() => update("role", v === "_all" ? "" : v)); }}
+      >
         <SelectTrigger className="w-36">
           <SelectValue placeholder="Semua peran" />
         </SelectTrigger>
@@ -223,10 +237,12 @@ export function AuditLogFilters({
       </Select>
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearAll} className="text-gray-500">
+        <Button variant="ghost" size="sm" onClick={clearAll} disabled={isPending} className="text-gray-500">
           <X className="h-4 w-4 mr-1" /> Reset
         </Button>
       )}
+
+      {isPending && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
     </div>
   );
 }
@@ -252,13 +268,14 @@ export function ScoreLogFilters({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const clearAll = () => {
     const params = new URLSearchParams(searchParams.toString());
     ["mahasiswa", "assessmentType", "modified", "dosen", "dateFrom", "dateTo", "page"].forEach(
       (k) => params.delete(k)
     );
-    router.push(`${pathname}?${params.toString()}`);
+    startTransition(() => router.push(`${pathname}?${params.toString()}`));
   };
 
   const hasFilters = mahasiswa || assessmentType || modified || dosen || dateFrom || dateTo;
@@ -271,9 +288,10 @@ export function ScoreLogFilters({
           className="pl-8 w-44"
           placeholder="NIM / Nama mahasiswa"
           defaultValue={mahasiswa}
-          onBlur={(e) => update("mahasiswa", e.target.value)}
+          disabled={isPending}
+          onBlur={(e) => startTransition(() => update("mahasiswa", e.target.value))}
           onKeyDown={(e) => {
-            if (e.key === "Enter") update("mahasiswa", (e.target as HTMLInputElement).value);
+            if (e.key === "Enter") startTransition(() => update("mahasiswa", (e.target as HTMLInputElement).value));
           }}
         />
       </div>
@@ -282,15 +300,17 @@ export function ScoreLogFilters({
         className="w-40"
         placeholder="Nama dosen..."
         defaultValue={dosen}
-        onBlur={(e) => update("dosen", e.target.value)}
+        disabled={isPending}
+        onBlur={(e) => startTransition(() => update("dosen", e.target.value))}
         onKeyDown={(e) => {
-          if (e.key === "Enter") update("dosen", (e.target as HTMLInputElement).value);
+          if (e.key === "Enter") startTransition(() => update("dosen", (e.target as HTMLInputElement).value));
         }}
       />
 
       <Select
         value={assessmentType || "_all"}
-        onValueChange={(v) => { if (v) update("assessmentType", v === "_all" ? "" : v); }}
+        disabled={isPending}
+        onValueChange={(v) => { if (v) startTransition(() => update("assessmentType", v === "_all" ? "" : v)); }}
       >
         <SelectTrigger className="w-44">
           <SelectValue placeholder="Semua penilaian" />
@@ -303,7 +323,11 @@ export function ScoreLogFilters({
         </SelectContent>
       </Select>
 
-      <Select value={modified || "_all"} onValueChange={(v) => { if (v) update("modified", v === "_all" ? "" : v); }}>
+      <Select
+        value={modified || "_all"}
+        disabled={isPending}
+        onValueChange={(v) => { if (v) startTransition(() => update("modified", v === "_all" ? "" : v)); }}
+      >
         <SelectTrigger className="w-40">
           <SelectValue placeholder="Semua status" />
         </SelectTrigger>
@@ -317,22 +341,26 @@ export function ScoreLogFilters({
         className="w-36"
         type="date"
         value={dateFrom}
-        onChange={(e) => update("dateFrom", e.target.value)}
+        disabled={isPending}
+        onChange={(e) => startTransition(() => update("dateFrom", e.target.value))}
         title="Dari tanggal"
       />
       <Input
         className="w-36"
         type="date"
         value={dateTo}
-        onChange={(e) => update("dateTo", e.target.value)}
+        disabled={isPending}
+        onChange={(e) => startTransition(() => update("dateTo", e.target.value))}
         title="Sampai tanggal"
       />
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearAll} className="text-gray-500">
+        <Button variant="ghost" size="sm" onClick={clearAll} disabled={isPending} className="text-gray-500">
           <X className="h-4 w-4 mr-1" /> Reset
         </Button>
       )}
+
+      {isPending && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
     </div>
   );
 }
@@ -645,28 +673,30 @@ export function AuditLogPagination({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const go = (p: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(p));
-    router.push(`${pathname ?? ""}?${params.toString()}`);
+    startTransition(() => router.push(`${pathname ?? ""}?${params.toString()}`));
   };
 
   if (totalPages <= 1) return null;
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600">
-      <span>
+      <span className="flex items-center gap-2">
         Halaman {page} dari {totalPages}
+        {isPending && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
       </span>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => go(page - 1)}>
+        <Button variant="outline" size="sm" disabled={page <= 1 || isPending} onClick={() => go(page - 1)}>
           ← Sebelumnya
         </Button>
         <Button
           variant="outline"
           size="sm"
-          disabled={page >= totalPages}
+          disabled={page >= totalPages || isPending}
           onClick={() => go(page + 1)}
         >
           Berikutnya →
