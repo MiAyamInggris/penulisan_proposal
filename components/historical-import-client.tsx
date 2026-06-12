@@ -50,6 +50,10 @@ export function HistoricalImportClient({ classes }: { classes: ClassOption[] }) 
     setLoading(true);
     setResult(null);
 
+    const slowTimer = setTimeout(() => {
+      toast.info("Proses memerlukan waktu lebih lama dari biasanya, mohon tunggu...");
+    }, 8000);
+
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -67,6 +71,7 @@ export function HistoricalImportClient({ classes }: { classes: ClassOption[] }) 
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Gagal memproses file");
     } finally {
+      clearTimeout(slowTimer);
       setLoading(false);
       if (inputRef.current) inputRef.current.value = "";
     }

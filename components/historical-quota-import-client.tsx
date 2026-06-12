@@ -55,6 +55,10 @@ export function HistoricalQuotaImportClient() {
     setLoading(true);
     setResult(null);
 
+    const slowTimer = setTimeout(() => {
+      toast.info("Proses memerlukan waktu lebih lama dari biasanya, mohon tunggu...");
+    }, 8000);
+
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -77,6 +81,7 @@ export function HistoricalQuotaImportClient() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Gagal memproses file");
     } finally {
+      clearTimeout(slowTimer);
       setLoading(false);
       if (inputRef.current) inputRef.current.value = "";
     }

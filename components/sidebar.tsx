@@ -25,6 +25,7 @@ interface SidebarProps {
 export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const roleLabels: Record<string, string> = {
     ADMIN: "Administrator",
@@ -103,10 +104,14 @@ export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }:
           variant="ghost"
           size="sm"
           className="w-full justify-start text-gray-600 hover:text-red-600 hover:bg-red-50"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          loading={loggingOut}
+          onClick={() => {
+            setLoggingOut(true);
+            signOut({ callbackUrl: "/login" });
+          }}
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          Keluar
+          {!loggingOut && <LogOut className="mr-2 h-4 w-4" />}
+          {loggingOut ? "Keluar..." : "Keluar"}
         </Button>
       </div>
     </div>

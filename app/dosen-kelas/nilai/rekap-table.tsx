@@ -6,6 +6,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, FileText } from "lucide-react";
 import * as XLSX from "xlsx";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -483,6 +484,7 @@ const staticColumns: ColumnDef<RekapRow>[] = [
               target="_blank"
               rel="noopener noreferrer"
               title={l.title}
+              onClick={() => toast.info(`Membuka ${l.title}...`)}
               className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
             >
               <FileText className="h-2.5 w-2.5" />
@@ -498,6 +500,18 @@ const staticColumns: ColumnDef<RekapRow>[] = [
 // ─── Main component ───────────────────────────────────────────────────────────
 export function RekapTable({ rows }: { rows: RekapRow[] }) {
   const [selectedRow, setSelectedRow] = useState<RekapRow | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      await new Promise((r) => setTimeout(r, 0));
+      exportToExcel(rows);
+      toast.success("Rekap nilai berhasil diunduh");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const columns: ColumnDef<RekapRow>[] = [
     ...staticColumns,
@@ -524,12 +538,13 @@ export function RekapTable({ rows }: { rows: RekapRow[] }) {
         <Button
           size="sm"
           variant="outline"
-          onClick={() => exportToExcel(rows)}
+          onClick={handleExportExcel}
           disabled={rows.length === 0}
+          loading={exporting}
           className="gap-2"
         >
-          <Download className="h-4 w-4" />
-          Export Excel
+          {!exporting && <Download className="h-4 w-4" />}
+          {exporting ? "Menyiapkan Excel..." : "Export Excel"}
         </Button>
       </div>
       <DataTable

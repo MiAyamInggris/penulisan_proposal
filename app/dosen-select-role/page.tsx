@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, GraduationCap, Crown, BookMarked } from "lucide-react";
 import { selectDosenRole, selectKetuaKKRole, selectKaprodiRole } from "./actions";
+import { RoleSubmitButton, RolePendingOverlay } from "@/components/role-submit-button";
 
 export default async function SelectRolePage() {
   const session = await auth();
@@ -59,7 +60,7 @@ export default async function SelectRolePage() {
         <div className={gridClass}>
           {/* Pembimbing card */}
           <form action={selectDosenRole.bind(null, "PEMBIMBING")}>
-            <button className="w-full text-left group">
+            <RoleSubmitButton className="w-full text-left group">
               <Card className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl group-hover:-translate-y-1 ${
                 activeContext === "PEMBIMBING" || (!activeContext && coordinatorClasses === 0)
                   ? "border-[#C8102E] shadow-md"
@@ -83,13 +84,14 @@ export default async function SelectRolePage() {
                   <Users className="h-24 w-24" />
                 </div>
               </Card>
-            </button>
+            </RoleSubmitButton>
+            <RolePendingOverlay label="Pembimbing" />
           </form>
 
           {/* Koordinator card — only if dosen has classes */}
           {coordinatorClasses > 0 && (
             <form action={selectDosenRole.bind(null, "KOORDINATOR")}>
-              <button className="w-full text-left group">
+              <RoleSubmitButton className="w-full text-left group">
                 <Card className={`relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl group-hover:-translate-y-1 ${
                   activeContext === "KOORDINATOR"
                     ? "border-[#C8102E] shadow-md"
@@ -113,14 +115,15 @@ export default async function SelectRolePage() {
                     <GraduationCap className="h-24 w-24" />
                   </div>
                 </Card>
-              </button>
+              </RoleSubmitButton>
+              <RolePendingOverlay label="Dosen Pengampu Kelas" />
             </form>
           )}
 
           {/* Ketua KK card — only if assigned as Ketua */}
           {isKetua && (
             <form action={selectKetuaKKRole}>
-              <button className="w-full text-left group">
+              <RoleSubmitButton className="w-full text-left group">
                 <Card className="relative overflow-hidden border-2 border-transparent transition-all duration-300 hover:border-yellow-400 hover:shadow-xl group-hover:-translate-y-1">
                   <CardContent className="pt-8 pb-8 px-8">
                     <div className="mb-6 w-14 h-14 rounded-xl bg-yellow-50 flex items-center justify-center text-yellow-600 transition-colors group-hover:bg-yellow-100">
@@ -139,14 +142,15 @@ export default async function SelectRolePage() {
                     <Crown className="h-24 w-24" />
                   </div>
                 </Card>
-              </button>
+              </RoleSubmitButton>
+              <RolePendingOverlay label="Ketua KK" />
             </form>
           )}
 
           {/* Kaprodi card — only if assigned as Kaprodi */}
           {isKaprodi && (
             <form action={selectKaprodiRole}>
-              <button className="w-full text-left group">
+              <RoleSubmitButton className="w-full text-left group">
                 <Card className="relative overflow-hidden border-2 border-transparent transition-all duration-300 hover:border-indigo-400 hover:shadow-xl group-hover:-translate-y-1">
                   <CardContent className="pt-8 pb-8 px-8">
                     <div className="mb-6 w-14 h-14 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 transition-colors group-hover:bg-indigo-100">
@@ -165,7 +169,8 @@ export default async function SelectRolePage() {
                     <BookMarked className="h-24 w-24" />
                   </div>
                 </Card>
-              </button>
+              </RoleSubmitButton>
+              <RolePendingOverlay label="Kaprodi" />
             </form>
           )}
         </div>

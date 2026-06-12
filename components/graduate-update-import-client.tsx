@@ -93,6 +93,10 @@ function ImportTab() {
     setPreview(null);
     setCommitResult(null);
 
+    const slowTimer = setTimeout(() => {
+      toast.info("Proses memerlukan waktu lebih lama dari biasanya, mohon tunggu...");
+    }, 8000);
+
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -109,6 +113,7 @@ function ImportTab() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Gagal memproses file");
     } finally {
+      clearTimeout(slowTimer);
       setLoading(false);
       if (inputRef.current) inputRef.current.value = "";
     }
@@ -120,6 +125,10 @@ function ImportTab() {
     if (validRows.length === 0) return;
 
     setCommitting(true);
+    const slowTimer = setTimeout(() => {
+      toast.info("Proses memerlukan waktu lebih lama dari biasanya, mohon tunggu...");
+    }, 8000);
+
     try {
       const res = await commitGraduateUpdateImport(validRows);
       setCommitResult(res);
@@ -132,6 +141,7 @@ function ImportTab() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Gagal melakukan import");
     } finally {
+      clearTimeout(slowTimer);
       setCommitting(false);
     }
   };
