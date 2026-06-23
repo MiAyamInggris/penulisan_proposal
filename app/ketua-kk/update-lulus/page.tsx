@@ -4,6 +4,8 @@ import { GraduateUpdateClient, type GraduateBatchRow } from "@/components/gradua
 type GraduateImportDetail = {
   total?: number;
   graduated?: number;
+  updated?: number;
+  skippedNoChange?: number;
   skipped?: number;
   failed?: number;
   importBatchId?: string;
@@ -30,6 +32,8 @@ export default async function UpdateLulusPage() {
       importedBy: l.user.name,
       total: detail.total ?? 0,
       graduated: detail.graduated ?? 0,
+      updated: detail.updated ?? 0,
+      skippedNoChange: detail.skippedNoChange ?? 0,
       skipped: detail.skipped ?? 0,
       failed: detail.failed ?? 0,
     };

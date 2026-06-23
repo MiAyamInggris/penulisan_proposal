@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, X, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { Search, X, AlertTriangle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -55,6 +55,7 @@ interface ScoreDetail {
 
 const ACTION_LABELS: Record<string, string> = {
   BULK_IMPORT_HISTORICAL: "Import Historis",
+  BULK_IMPORT_HISTORICAL_QUOTA: "Import Kuota Historis TA2",
   ASSIGN_KAPRODI: "Tetapkan Kaprodi",
   REMOVE_KAPRODI: "Hapus Kaprodi",
   ASSIGN_PEMBIMBING_KK: "Penugasan Pembimbing",
@@ -62,10 +63,15 @@ const ACTION_LABELS: Record<string, string> = {
   DOSEN_SYNC: "Sinkronisasi Dosen",
   GRADUATE_UPDATE_IMPORT: "Update Mahasiswa Lulus (Bulk)",
   GRADUATE_STUDENT: "Update Mahasiswa Lulus",
+  SIDANG_IMPORT_BULK: "Import Plotting Penguji",
+  ASSIGN_PENGUJI_SIDANG: "Tugaskan Penguji",
+  REASSIGN_PENGUJI_SIDANG: "Ubah Penguji",
+  ASSIGNMENT_UPDATED: "Assignment Updated",
 };
 
 const ACTION_COLORS: Record<string, string> = {
   BULK_IMPORT_HISTORICAL: "bg-indigo-100 text-indigo-800",
+  BULK_IMPORT_HISTORICAL_QUOTA: "bg-indigo-100 text-indigo-800",
   ASSIGN_KAPRODI: "bg-green-100 text-green-800",
   REMOVE_KAPRODI: "bg-red-100 text-red-800",
   ASSIGN_PEMBIMBING_KK: "bg-blue-100 text-blue-800",
@@ -73,7 +79,18 @@ const ACTION_COLORS: Record<string, string> = {
   DOSEN_SYNC: "bg-gray-100 text-gray-700",
   GRADUATE_UPDATE_IMPORT: "bg-emerald-100 text-emerald-800",
   GRADUATE_STUDENT: "bg-emerald-50 text-emerald-700",
+  SIDANG_IMPORT_BULK: "bg-rose-100 text-rose-800",
+  ASSIGN_PENGUJI_SIDANG: "bg-rose-50 text-rose-700",
+  REASSIGN_PENGUJI_SIDANG: "bg-amber-100 text-amber-800",
+  ASSIGNMENT_UPDATED: "bg-orange-100 text-orange-800",
 };
+
+const ACTION_ICONS: Partial<Record<string, typeof RefreshCw>> = {
+  ASSIGNMENT_UPDATED: RefreshCw,
+  REASSIGN_PENGUJI_SIDANG: RefreshCw,
+};
+
+type AssignmentChange = { field: string; previous: string; new: string };
 
 const ROLE_LABELS: Record<string, string> = {
   KAPRODI: "Kaprodi",
@@ -370,6 +387,9 @@ export function ScoreLogFilters({
 function DetailModal({ detail }: { detail: unknown }) {
   if (!detail) return <span className="text-gray-400 text-xs">—</span>;
 
+  const obj = detail as Record<string, unknown>;
+  const changes = Array.isArray(obj.changes) ? (obj.changes as AssignmentChange[]) : null;
+
   return (
     <Dialog>
       <DialogTrigger>
@@ -379,9 +399,44 @@ function DetailModal({ detail }: { detail: unknown }) {
         <DialogHeader>
           <DialogTitle>Detail Aksi</DialogTitle>
         </DialogHeader>
-        <pre className="bg-gray-50 rounded p-3 text-xs overflow-auto max-h-80 whitespace-pre-wrap">
-          {JSON.stringify(detail, null, 2)}
-        </pre>
+        {changes && changes.length > 0 ? (
+          <div className="space-y-3 text-sm">
+            {typeof obj.nim === "string" && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <span className="text-gray-500">NIM</span>
+                <span className="font-mono">{String(obj.nim)}</span>
+                {typeof obj.nama === "string" && (
+                  <>
+                    <span className="text-gray-500">Nama</span>
+                    <span className="font-medium">{String(obj.nama)}</span>
+                  </>
+                )}
+              </div>
+            )}
+            <table className="w-full text-xs border rounded overflow-hidden">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500">
+                  <th className="text-left py-1.5 px-2 font-medium">Field</th>
+                  <th className="text-left py-1.5 px-2 font-medium text-red-600">Sebelum</th>
+                  <th className="text-left py-1.5 px-2 font-medium text-green-700">Setelah</th>
+                </tr>
+              </thead>
+              <tbody>
+                {changes.map((c, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="py-1.5 px-2 text-gray-700">{c.field}</td>
+                    <td className="py-1.5 px-2 text-red-600">{c.previous}</td>
+                    <td className="py-1.5 px-2 text-green-700 font-medium">{c.new}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <pre className="bg-gray-50 rounded p-3 text-xs overflow-auto max-h-80 whitespace-pre-wrap">
+            {JSON.stringify(detail, null, 2)}
+          </pre>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -424,7 +479,11 @@ export function AuditLogTable({ rows }: { rows: AuditLogRow[] }) {
                 </span>
               </td>
               <td className="px-4 py-2.5">
-                <Badge className={`text-xs ${ACTION_COLORS[log.action] ?? "bg-gray-100 text-gray-700"}`}>
+                <Badge className={`text-xs gap-1 ${ACTION_COLORS[log.action] ?? "bg-gray-100 text-gray-700"}`}>
+                  {ACTION_ICONS[log.action] && (() => {
+                    const Icon = ACTION_ICONS[log.action]!;
+                    return <Icon className="h-3 w-3" />;
+                  })()}
                   {ACTION_LABELS[log.action] ?? log.action}
                 </Badge>
               </td>

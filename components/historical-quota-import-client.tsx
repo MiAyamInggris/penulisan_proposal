@@ -65,16 +65,20 @@ export function HistoricalQuotaImportClient() {
       const res = await bulkImportHistoricalQuota(fd);
       setResult(res);
 
-      if (res.imported > 0) {
-        let msg = `${res.imported} mahasiswa berhasil diimpor ke Tugas Akhir - Past`;
+      if (res.imported > 0 || res.updated > 0) {
+        let msg = "";
+        if (res.imported > 0) msg += `${res.imported} mahasiswa baru diimpor`;
+        if (res.updated > 0) msg += `${msg ? ", " : ""}${res.updated} data pembimbing diperbarui`;
+        if (res.skippedNoChange > 0) msg += `${msg ? ", " : ""}${res.skippedNoChange} tidak berubah`;
         if (res.missingPembimbing > 0) msg += ` (${res.missingPembimbing} belum punya pembimbing)`;
-        if (res.skippedExisting > 0) msg += `, ${res.skippedExisting} dilewati (NIM sudah ada)`;
         toast.success(msg);
         router.refresh();
       } else if (res.invalidData + res.failedRows === res.total) {
         toast.error("Semua baris gagal diproses");
+      } else if (res.skippedNoChange === res.total) {
+        toast.info("Semua data sudah sesuai — tidak ada perubahan");
       } else if (res.skippedExisting === res.total) {
-        toast.warning("Semua baris dilewati karena NIM sudah terdaftar");
+        toast.warning("Semua baris dilewati — mahasiswa sudah ada tanpa data historis untuk dibandingkan");
       } else {
         toast.warning("Import selesai dengan beberapa peringatan");
       }
@@ -184,7 +188,7 @@ export function HistoricalQuotaImportClient() {
             )}
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-4">
               <div className="text-center rounded-lg bg-gray-50 p-3">
                 <p className="text-2xl font-bold text-gray-900">{result.total}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Total Baris</p>
@@ -192,6 +196,14 @@ export function HistoricalQuotaImportClient() {
               <div className="text-center rounded-lg bg-green-50 p-3">
                 <p className="text-2xl font-bold text-green-700">{result.imported}</p>
                 <p className="text-xs text-green-600 mt-0.5">Imported</p>
+              </div>
+              <div className="text-center rounded-lg bg-blue-50 p-3">
+                <p className="text-2xl font-bold text-blue-700">{result.updated}</p>
+                <p className="text-xs text-blue-600 mt-0.5">Updated</p>
+              </div>
+              <div className="text-center rounded-lg bg-gray-50 p-3">
+                <p className="text-2xl font-bold text-gray-500">{result.skippedNoChange}</p>
+                <p className="text-xs text-gray-500 mt-0.5">No Change</p>
               </div>
               <div className="text-center rounded-lg bg-amber-50 p-3">
                 <p className="text-2xl font-bold text-amber-700">{result.missingPembimbing}</p>
@@ -256,7 +268,7 @@ export function HistoricalQuotaImportClient() {
               </div>
             )}
 
-            {result.imported > 0 && result.invalidData === 0 && result.failedRows === 0 && result.warnings.length === 0 && (
+            {(result.imported > 0 || result.updated > 0) && result.invalidData === 0 && result.failedRows === 0 && result.warnings.length === 0 && (
               <div className="flex items-center gap-2 text-sm text-green-700">
                 <CheckCircle2 className="h-4 w-4" />
                 Import selesai tanpa error. Data kuota historis telah tersimpan.

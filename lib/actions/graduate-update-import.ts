@@ -2,11 +2,12 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { logAudit } from "@/lib/audit";
+import { logAudit, type AssignmentChange } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 
 export type GraduateRowStatus = "Valid" | "Invalid";
+export type GraduateRowAction = "Graduate" | "UpdateDate" | "SkipNoChange";
 
 export type GraduatePreviewRow = {
   row: number;
@@ -20,6 +21,8 @@ export type GraduatePreviewRow = {
   reason?: string;
   proposalId?: string;
   currentStatus?: string;
+  action?: GraduateRowAction;
+  previousTanggalYudisium?: string;
 };
 
 export type GraduatePreviewResult = {
@@ -29,11 +32,13 @@ export type GraduatePreviewResult = {
   rows: GraduatePreviewRow[];
 };
 
-export type GraduateCommitRowStatus = "Graduated" | "Skipped" | "Failed";
+export type GraduateCommitRowStatus = "Graduated" | "Updated" | "SkippedNoChange" | "Skipped" | "Failed";
 
 export type GraduateCommitResult = {
   total: number;
   graduated: number;
+  updated: number;
+  skippedNoChange: number;
   skipped: number;
   failed: number;
   importBatchId: string;
@@ -69,6 +74,11 @@ function parseTanggalYudisium(raw: unknown): Date | null {
   return null;
 }
 
+function isSameDay(a: Date | null, b: Date | null): boolean {
+  if (!a || !b) return false;
+  return a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10);
+}
+
 export async function previewGraduateUpdateImport(formData: FormData): Promise<GraduatePreviewResult> {
   await requireKetuaOrAdmin();
 
@@ -89,6 +99,13 @@ export async function previewGraduateUpdateImport(formData: FormData): Promise<G
   };
 
   if (sheetRows.length === 0) return result;
+
+  // Pre-load all mahasiswa names for Priority 2 (name) matching when NIM lookup fails
+  const allMahasiswa = await prisma.user.findMany({
+    where: { role: "MAHASISWA" },
+    select: { identifier: true, name: true },
+  });
+  const mahasiswaByNama = new Map(allMahasiswa.map((u) => [u.name.toLowerCase().trim(), u.identifier]));
 
   for (let i = 0; i < sheetRows.length; i++) {
     const rowNum = i + 2;
@@ -124,19 +141,27 @@ export async function previewGraduateUpdateImport(formData: FormData): Promise<G
       select: { id: true, name: true },
     });
     if (!mahasiswa) {
+      let reason = "NIM tidak ditemukan";
+      if (namaInput) {
+        const nameMatchNim = mahasiswaByNama.get(namaInput.toLowerCase().trim());
+        if (nameMatchNim && nameMatchNim.toLowerCase() !== nim.toLowerCase()) {
+          reason = `NIM tidak ditemukan — nama "${namaInput}" cocok dengan mahasiswa lain (NIM: ${nameMatchNim}), periksa kemungkinan kesalahan input NIM`;
+        }
+      }
       result.invalid++;
-      result.rows.push({ ...base, tanggalYudisium: tanggalYudisium.toISOString(), status: "Invalid", reason: "NIM tidak ditemukan" });
+      result.rows.push({ ...base, tanggalYudisium: tanggalYudisium.toISOString(), status: "Invalid", reason });
       continue;
     }
 
     const eligibleProposals = await prisma.proposal.findMany({
       where: {
         enrollment: { studentId: mahasiswa.id },
-        status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED", "LULUS"] },
+        status: { notIn: ["ENROLLED", "PROPOSAL_UPLOADED"] },
       },
       select: {
         id: true,
         status: true,
+        tanggalYudisium: true,
         supervisor1Assigned: { select: { kodeDosen: true } },
         supervisor2Assigned: { select: { kodeDosen: true } },
       },
@@ -149,7 +174,7 @@ export async function previewGraduateUpdateImport(formData: FormData): Promise<G
         studentName: mahasiswa.name,
         tanggalYudisium: tanggalYudisium.toISOString(),
         status: "Invalid",
-        reason: "Mahasiswa tidak memiliki data bimbingan aktif (sudah lulus atau belum ditugaskan)",
+        reason: "Mahasiswa tidak memiliki data bimbingan aktif (belum ditugaskan)",
       });
       continue;
     }
@@ -187,14 +212,33 @@ export async function previewGraduateUpdateImport(formData: FormData): Promise<G
       continue;
     }
 
+    const matched = matches[0];
+
+    if (matched.status === "LULUS") {
+      const sameDate = isSameDay(matched.tanggalYudisium, tanggalYudisium);
+      result.valid++;
+      result.rows.push({
+        ...base,
+        studentName: mahasiswa.name,
+        tanggalYudisium: tanggalYudisium.toISOString(),
+        status: "Valid",
+        proposalId: matched.id,
+        currentStatus: matched.status,
+        action: sameDate ? "SkipNoChange" : "UpdateDate",
+        previousTanggalYudisium: matched.tanggalYudisium?.toISOString(),
+      });
+      continue;
+    }
+
     result.valid++;
     result.rows.push({
       ...base,
       studentName: mahasiswa.name,
       tanggalYudisium: tanggalYudisium.toISOString(),
       status: "Valid",
-      proposalId: matches[0].id,
-      currentStatus: matches[0].status,
+      proposalId: matched.id,
+      currentStatus: matched.status,
+      action: "Graduate",
     });
   }
 
@@ -209,6 +253,8 @@ export async function commitGraduateUpdateImport(rows: GraduatePreviewRow[]): Pr
   const result: GraduateCommitResult = {
     total: rows.length,
     graduated: 0,
+    updated: 0,
+    skippedNoChange: 0,
     skipped: 0,
     failed: 0,
     importBatchId,
@@ -227,16 +273,52 @@ export async function commitGraduateUpdateImport(rows: GraduatePreviewRow[]): Pr
     try {
       const current = await prisma.proposal.findUnique({
         where: { id: row.proposalId },
-        select: { status: true },
+        select: { status: true, tanggalYudisium: true },
       });
 
-      if (!current || ["ENROLLED", "PROPOSAL_UPLOADED", "LULUS"].includes(current.status)) {
+      if (!current || ["ENROLLED", "PROPOSAL_UPLOADED"].includes(current.status)) {
         result.skipped++;
         result.rows.push({ row: row.row, nim: row.nim, nama, status: "Skipped", reason: "Status berubah sejak preview" });
         continue;
       }
 
       const tanggalYudisium = new Date(row.tanggalYudisium);
+
+      if (current.status === "LULUS") {
+        if (isSameDay(current.tanggalYudisium, tanggalYudisium)) {
+          result.skippedNoChange++;
+          result.rows.push({ row: row.row, nim: row.nim, nama, status: "SkippedNoChange", reason: "Tanggal Yudisium tidak berubah" });
+          continue;
+        }
+
+        const previousDate = current.tanggalYudisium?.toLocaleDateString("id-ID") ?? "—";
+        const newDate = tanggalYudisium.toLocaleDateString("id-ID");
+        const changes: AssignmentChange[] = [{ field: "Tanggal Yudisium", previous: previousDate, new: newDate }];
+
+        await prisma.proposal.update({
+          where: { id: row.proposalId },
+          data: { tanggalYudisium },
+        });
+
+        result.updated++;
+        result.rows.push({ row: row.row, nim: row.nim, nama, status: "Updated", reason: `Tanggal Yudisium: ${previousDate} → ${newDate}` });
+
+        await logAudit(
+          session.user.id,
+          auditRole,
+          "ASSIGNMENT_UPDATED",
+          {
+            source: "GRADUATION",
+            nim: row.nim,
+            nama,
+            changes,
+            message: `Tanggal Yudisium: ${previousDate} → ${newDate}`,
+          },
+          "PROPOSAL",
+          row.proposalId
+        );
+        continue;
+      }
 
       await prisma.proposal.update({
         where: { id: row.proposalId },
@@ -283,10 +365,12 @@ export async function commitGraduateUpdateImport(rows: GraduatePreviewRow[]): Pr
     {
       total: result.total,
       graduated: result.graduated,
+      updated: result.updated,
+      skippedNoChange: result.skippedNoChange,
       skipped: result.skipped,
       failed: result.failed,
       importBatchId,
-      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} updated ${result.graduated} students to LULUS using Graduate Update Import.`,
+      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} graduated ${result.graduated} and updated ${result.updated} students using Graduate Update Import.`,
     },
     "CLASS"
   );

@@ -99,7 +99,9 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
       setCommitResult(res);
       const saved = res.created + res.updated;
       if (saved > 0) {
-        toast.success(`${saved} data berhasil disimpan (${res.created} baru, ${res.updated} diperbarui)`);
+        toast.success(`${res.created} data baru, ${res.updated} diperbarui, ${res.skippedNoChange} tidak berubah`);
+      } else if (res.skippedNoChange > 0) {
+        toast.info(`Semua ${res.skippedNoChange} data sudah sesuai — tidak ada perubahan`);
       } else {
         toast.warning("Tidak ada data yang disimpan");
       }
@@ -187,10 +189,12 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
             )}
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {[
                 { label: "Total", value: preview.total, cls: "bg-gray-50 text-gray-900" },
-                { label: "Valid", value: preview.valid, cls: "bg-green-50 text-green-700" },
+                { label: "Baru", value: preview.willCreate, cls: "bg-green-50 text-green-700" },
+                { label: "Akan Diperbarui", value: preview.willUpdate, cls: "bg-blue-50 text-blue-700" },
+                { label: "Tidak Berubah", value: preview.willSkipNoChange, cls: "bg-gray-50 text-gray-500" },
                 { label: "Peringatan", value: preview.warnings, cls: "bg-amber-50 text-amber-700" },
                 { label: "Invalid", value: preview.invalid, cls: "bg-red-50 text-red-700" },
               ].map((s) => (
@@ -213,6 +217,7 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
                     {method === "full" && <th className="text-left py-1.5 pr-3 font-medium">PGJ1</th>}
                     {method === "full" && <th className="text-left py-1.5 pr-3 font-medium">PGJ2</th>}
                     <th className="text-left py-1.5 pr-3 font-medium">Status</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">Aksi</th>
                     <th className="text-left py-1.5 font-medium">Keterangan</th>
                   </tr>
                 </thead>
@@ -235,7 +240,23 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
                           {r.status}
                         </Badge>
                       </td>
-                      <td className="py-1.5 text-gray-500 max-w-xs truncate">{r.issues.join("; ") || "—"}</td>
+                      <td className="py-1.5 pr-3">
+                        {r.status !== "Invalid" && (
+                          <Badge variant="outline" className={
+                            r.action === "CREATE" ? "border-green-300 text-green-700"
+                              : r.action === "UPDATE" ? "border-blue-300 text-blue-700"
+                              : "border-gray-300 text-gray-500"
+                          }>
+                            {r.action === "CREATE" ? "Baru" : r.action === "UPDATE" ? "Update" : "Tidak Berubah"}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="py-1.5 text-gray-500 max-w-xs truncate" title={[...r.issues, ...r.changes.map(c=>`${c.field}: ${c.previous} → ${c.new}`)].join("; ")}>
+                        {r.issues.join("; ")}
+                        {r.issues.length > 0 && r.changes.length > 0 && "; "}
+                        {r.changes.map((c) => `${c.field}: ${c.previous} → ${c.new}`).join("; ")}
+                        {r.issues.length === 0 && r.changes.length === 0 && "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -259,11 +280,12 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
         <Card>
           <CardHeader><CardTitle className="text-base">Hasil Import</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
               {[
                 { label: "Total", value: commitResult.total, cls: "bg-gray-50 text-gray-900" },
                 { label: "Baru", value: commitResult.created, cls: "bg-green-50 text-green-700" },
                 { label: "Diperbarui", value: commitResult.updated, cls: "bg-blue-50 text-blue-700" },
+                { label: "Tidak Berubah", value: commitResult.skippedNoChange, cls: "bg-gray-50 text-gray-500" },
                 { label: "Gagal", value: commitResult.failed, cls: "bg-red-50 text-red-700" },
               ].map((s) => (
                 <div key={s.label} className={`text-center rounded-lg p-3 ${s.cls.split(" ")[0]}`}>

@@ -30,6 +30,8 @@ export type GraduateBatchRow = {
   importedBy: string;
   total: number;
   graduated: number;
+  updated: number;
+  skippedNoChange: number;
   skipped: number;
   failed: number;
 };
@@ -132,9 +134,15 @@ function ImportTab() {
     try {
       const res = await commitGraduateUpdateImport(validRows);
       setCommitResult(res);
-      if (res.graduated > 0) {
-        toast.success(`${res.graduated} mahasiswa berhasil diperbarui menjadi LULUS`);
+      if (res.graduated > 0 || res.updated > 0) {
+        let msg = "";
+        if (res.graduated > 0) msg += `${res.graduated} mahasiswa diperbarui menjadi LULUS`;
+        if (res.updated > 0) msg += `${msg ? ", " : ""}${res.updated} tanggal yudisium diperbarui`;
+        if (res.skippedNoChange > 0) msg += `${msg ? ", " : ""}${res.skippedNoChange} tidak berubah`;
+        toast.success(msg);
         router.refresh();
+      } else if (res.skippedNoChange > 0) {
+        toast.info(`Semua ${res.skippedNoChange} data sudah sesuai — tidak ada perubahan`);
       } else {
         toast.warning("Tidak ada mahasiswa yang diperbarui");
       }
@@ -257,6 +265,7 @@ function ImportTab() {
                     <th className="text-left py-1.5 pr-3 font-medium">Kode P2</th>
                     <th className="text-left py-1.5 pr-3 font-medium">Tgl Yudisium</th>
                     <th className="text-left py-1.5 pr-3 font-medium">Status</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">Aksi</th>
                     <th className="text-left py-1.5 font-medium">Keterangan</th>
                   </tr>
                 </thead>
@@ -281,6 +290,17 @@ function ImportTab() {
                         >
                           {r.status}
                         </Badge>
+                      </td>
+                      <td className="py-1.5 pr-3">
+                        {r.action && (
+                          <Badge variant="outline" className={
+                            r.action === "Graduate" ? "border-green-300 text-green-700"
+                              : r.action === "UpdateDate" ? "border-blue-300 text-blue-700"
+                              : "border-gray-300 text-gray-500"
+                          }>
+                            {r.action === "Graduate" ? "Lulus Baru" : r.action === "UpdateDate" ? "Update Tanggal" : "Tidak Berubah"}
+                          </Badge>
+                        )}
                       </td>
                       <td className="py-1.5 text-gray-500">{r.reason ?? "—"}</td>
                     </tr>
@@ -319,7 +339,7 @@ function ImportTab() {
             )}
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
               <div className="text-center rounded-lg bg-gray-50 p-3">
                 <p className="text-2xl font-bold text-gray-900">{commitResult.total}</p>
                 <p className="text-xs text-gray-500 mt-0.5">Total Baris</p>
@@ -327,6 +347,14 @@ function ImportTab() {
               <div className="text-center rounded-lg bg-green-50 p-3">
                 <p className="text-2xl font-bold text-green-700">{commitResult.graduated}</p>
                 <p className="text-xs text-green-600 mt-0.5">Lulus (Berhasil)</p>
+              </div>
+              <div className="text-center rounded-lg bg-blue-50 p-3">
+                <p className="text-2xl font-bold text-blue-700">{commitResult.updated}</p>
+                <p className="text-xs text-blue-600 mt-0.5">Tgl Diperbarui</p>
+              </div>
+              <div className="text-center rounded-lg bg-gray-50 p-3">
+                <p className="text-2xl font-bold text-gray-500">{commitResult.skippedNoChange}</p>
+                <p className="text-xs text-gray-500 mt-0.5">Tidak Berubah</p>
               </div>
               <div className="text-center rounded-lg bg-blue-50 p-3">
                 <p className="text-2xl font-bold text-blue-700">{commitResult.skipped}</p>
@@ -338,7 +366,7 @@ function ImportTab() {
               </div>
             </div>
 
-            {commitResult.graduated > 0 && commitResult.failed === 0 && (
+            {(commitResult.graduated > 0 || commitResult.updated > 0) && commitResult.failed === 0 && (
               <div className="flex items-center gap-2 text-sm text-green-700">
                 <CheckCircle2 className="h-4 w-4" />
                 Status mahasiswa berhasil diperbarui. Kuota bimbingan dosen telah disesuaikan.
@@ -389,6 +417,7 @@ function RiwayatTab({ batches }: { batches: GraduateBatchRow[] }) {
                 <th className="text-left px-4 py-3 font-medium">Diimpor Oleh</th>
                 <th className="text-center px-4 py-3 font-medium">Total</th>
                 <th className="text-center px-4 py-3 font-medium">Lulus</th>
+                <th className="text-center px-4 py-3 font-medium">Diperbarui</th>
                 <th className="text-center px-4 py-3 font-medium">Dilewati</th>
                 <th className="text-center px-4 py-3 font-medium">Gagal</th>
               </tr>
@@ -402,6 +431,7 @@ function RiwayatTab({ batches }: { batches: GraduateBatchRow[] }) {
                   <td className="px-4 py-3 font-medium text-gray-900">{b.importedBy}</td>
                   <td className="px-4 py-3 text-center text-gray-700">{b.total}</td>
                   <td className="px-4 py-3 text-center font-semibold text-green-700">{b.graduated}</td>
+                  <td className="px-4 py-3 text-center text-blue-700">{b.updated}</td>
                   <td className="px-4 py-3 text-center text-blue-700">{b.skipped}</td>
                   <td className="px-4 py-3 text-center text-red-700">{b.failed}</td>
                 </tr>

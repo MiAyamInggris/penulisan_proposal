@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { ProdiCode } from "@prisma/client";
 import { getOrCreateTAPastClass } from "@/lib/system-class";
-import { logAudit } from "@/lib/audit";
+import { logAudit, type AssignmentChange } from "@/lib/audit";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
@@ -14,6 +14,8 @@ const PRODI_CODES: ProdiCode[] = ["RPL", "IF", "DS", "SI"];
 
 export type HistoricalQuotaImportRowStatus =
   | "Imported"
+  | "Updated"
+  | "Skipped No Change"
   | "Missing Pembimbing"
   | "Skipped Existing"
   | "Invalid Data"
@@ -22,6 +24,8 @@ export type HistoricalQuotaImportRowStatus =
 export type HistoricalQuotaImportResult = {
   total: number;
   imported: number;
+  updated: number;
+  skippedNoChange: number;
   missingPembimbing: number;
   skippedExisting: number;
   invalidData: number;
@@ -71,6 +75,8 @@ export async function bulkImportHistoricalQuota(
   const result: HistoricalQuotaImportResult = {
     total: sheetRows.length,
     imported: 0,
+    updated: 0,
+    skippedNoChange: 0,
     missingPembimbing: 0,
     skippedExisting: 0,
     invalidData: 0,
@@ -97,13 +103,18 @@ export async function bulkImportHistoricalQuota(
   const dosenByKode = new Map(
     allDosen.map((d) => [d.kodeDosen!.trim().toLowerCase(), d])
   );
+  const kodeById = new Map(allDosen.map((d) => [d.id, d.kodeDosen!]));
 
-  // Pre-load existing mahasiswa by NIM
+  // Pre-load existing mahasiswa by NIM (+ name index for Priority 2 matching)
   const existingMahasiswa = await prisma.user.findMany({
     where: { role: "MAHASISWA" },
-    select: { id: true, identifier: true },
+    select: { id: true, identifier: true, name: true },
   });
   const mahasiswaByNim = new Map(existingMahasiswa.map((u) => [u.identifier.toLowerCase(), u]));
+  const mahasiswaByNama = new Map<string, string>(); // nama(lower) -> nim
+  for (const u of existingMahasiswa) {
+    mahasiswaByNama.set(u.name.toLowerCase().trim(), u.identifier);
+  }
 
   // Cache of "Tugas Akhir - Past" class id per program
   const taPastClassByProgramId = new Map<string, string>();
@@ -161,12 +172,15 @@ export async function bulkImportHistoricalQuota(
       continue;
     }
 
-    // --- NIM already exists: skip the row entirely, never overwrite ---
-    if (mahasiswaByNim.has(nim.toLowerCase())) {
-      result.skippedExisting++;
-      skippedNims.push(nim);
-      result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Skipped Existing", reason: "NIM sudah terdaftar — baris dilewati" });
-      continue;
+    // Mahasiswa matching: Priority 1 = NIM, Priority 2 = Nama (exact match, different NIM → warn)
+    const existingMhs = mahasiswaByNim.get(nim.toLowerCase());
+    if (!existingMhs) {
+      const nameMatchNim = mahasiswaByNama.get(nama.toLowerCase().trim());
+      if (nameMatchNim && nameMatchNim.toLowerCase() !== nim.toLowerCase()) {
+        result.warnings.push(
+          `Baris ${rowNum}: Nama "${nama}" cocok dengan mahasiswa lain (NIM: ${nameMatchNim}) — periksa kemungkinan duplikat/kesalahan input NIM`
+        );
+      }
     }
 
     // --- Resolve pembimbing — missing/unmatched no longer fails the row ---
@@ -193,7 +207,7 @@ export async function bulkImportHistoricalQuota(
     }
 
     try {
-      // --- Resolve or create the per-program "Tugas Akhir - Past" class ---
+      // --- Resolve or create the per-program "Tugas Akhir - Past" class (needed for both branches) ---
       let taPastClassId = taPastClassByProgramId.get(program.id);
       if (!taPastClassId) {
         const fallbackDosenId = isKetuaUser ? session.user.id : program.kaprodiId;
@@ -212,7 +226,77 @@ export async function bulkImportHistoricalQuota(
         taPastClassByProgramId.set(program.id, taPastClassId);
       }
 
-      // --- Create mahasiswa (NIM not found among existing users) ---
+      // ════════════════════════════════════════════════════════════════════
+      // BRANCH A: mahasiswa already has an account — check for an existing
+      // historical TA2 record to update or skip; never create a duplicate.
+      // ════════════════════════════════════════════════════════════════════
+      if (existingMhs) {
+        const enrollment = await prisma.classEnrollment.findUnique({
+          where: { classId_studentId: { classId: taPastClassId, studentId: existingMhs.id } },
+          select: {
+            id: true,
+            proposal: { select: { id: true, supervisor1AssignedId: true, supervisor2AssignedId: true } },
+          },
+        });
+
+        if (!enrollment || !enrollment.proposal) {
+          result.skippedExisting++;
+          skippedNims.push(nim);
+          result.rows.push({
+            row: rowNum, nim, nama, prodi: prodiCode, status: "Skipped Existing",
+            reason: "Mahasiswa sudah terdaftar namun tidak memiliki data historis TA2 — baris dilewati",
+          });
+          continue;
+        }
+
+        const prevSv1Id = enrollment.proposal.supervisor1AssignedId;
+        const prevSv2Id = enrollment.proposal.supervisor2AssignedId;
+        const newSv1Id = sv1?.id ?? null;
+        const newSv2Id = sv2?.id ?? null;
+
+        if (prevSv1Id === newSv1Id && prevSv2Id === newSv2Id) {
+          result.skippedNoChange++;
+          result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Skipped No Change", reason: "Data pembimbing tidak berubah" });
+          continue;
+        }
+
+        const changes: AssignmentChange[] = [];
+        if (prevSv1Id !== newSv1Id) {
+          changes.push({ field: "Pembimbing 1", previous: prevSv1Id ? (kodeById.get(prevSv1Id) ?? "—") : "—", new: sv1?.kodeDosen ?? "—" });
+        }
+        if (prevSv2Id !== newSv2Id) {
+          changes.push({ field: "Pembimbing 2", previous: prevSv2Id ? (kodeById.get(prevSv2Id) ?? "—") : "—", new: sv2?.kodeDosen ?? "—" });
+        }
+
+        await prisma.proposal.update({
+          where: { id: enrollment.proposal.id },
+          data: { supervisor1AssignedId: newSv1Id, supervisor2AssignedId: newSv2Id },
+        });
+
+        result.updated++;
+        const changeSummary = changes.map((c) => `${c.field}: ${c.previous} → ${c.new}`).join("; ");
+        result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Updated", reason: changeSummary });
+
+        await logAudit(
+          session.user.id,
+          auditRole,
+          "ASSIGNMENT_UPDATED",
+          {
+            source: "HISTORICAL_TA2",
+            nim, nama, changes,
+            message: changeSummary,
+          },
+          "PROPOSAL",
+          enrollment.proposal.id
+        );
+
+        touchedProdiCodes.add(prodiCode);
+        continue;
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // BRANCH B: brand new mahasiswa — create user + enrollment + proposal.
+      // ════════════════════════════════════════════════════════════════════
       const hashed = await bcrypt.hash(nim, 10);
       const newUser = await prisma.user.create({
         data: {
@@ -225,33 +309,16 @@ export async function bulkImportHistoricalQuota(
         select: { id: true },
       });
       const userId = newUser.id;
-      mahasiswaByNim.set(nim.toLowerCase(), { id: userId, identifier: nim });
+      mahasiswaByNim.set(nim.toLowerCase(), { id: userId, identifier: nim, name: nama });
 
-      // --- Resolve or create the (hidden, inactive) enrollment in Tugas Akhir - Past ---
-      let enrollment = await prisma.classEnrollment.findUnique({
-        where: { classId_studentId: { classId: taPastClassId, studentId: userId } },
-        select: { id: true, proposal: { select: { id: true } } },
+      const created = await prisma.classEnrollment.create({
+        data: { classId: taPastClassId, studentId: userId, isActive: false },
+        select: { id: true },
       });
-      if (!enrollment) {
-        const created = await prisma.classEnrollment.create({
-          data: { classId: taPastClassId, studentId: userId, isActive: false },
-          select: { id: true, proposal: { select: { id: true } } },
-        });
-        enrollment = created;
-      }
 
-      if (enrollment.proposal) {
-        // Defensive: a TA-Past record already exists for this (newly created) user — skip.
-        result.skippedExisting++;
-        skippedNims.push(nim);
-        result.rows.push({ row: rowNum, nim, nama, prodi: prodiCode, status: "Skipped Existing", reason: "Data Tugas Akhir - Past sudah ada — baris dilewati" });
-        continue;
-      }
-
-      // --- Create the historical quota proposal ---
       await prisma.proposal.create({
         data: {
-          enrollmentId: enrollment.id,
+          enrollmentId: created.id,
           titleId: "Data Historis Kuota TA2",
           status: "COMPLETED",
           academicStage: "TUGAS_AKHIR_2",
@@ -294,6 +361,8 @@ export async function bulkImportHistoricalQuota(
     {
       total: result.total,
       imported: result.imported,
+      updated: result.updated,
+      skippedNoChange: result.skippedNoChange,
       missingPembimbing: result.missingPembimbing,
       skippedExisting: result.skippedExisting,
       invalidData: result.invalidData,
@@ -301,7 +370,7 @@ export async function bulkImportHistoricalQuota(
       importBatchId,
       programs: [...touchedProdiCodes],
       skippedNims,
-      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} imported ${result.imported} TA2 students.${skippedNims.length > 0 ? ` ${skippedNims.length} mahasiswa skipped because NIM already exists.` : ""}`,
+      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} imported ${result.imported} new and updated ${result.updated} TA2 students.${skippedNims.length > 0 ? ` ${skippedNims.length} mahasiswa skipped (no historical data).` : ""}`,
     },
     "CLASS"
   );

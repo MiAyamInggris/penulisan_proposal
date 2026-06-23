@@ -37,6 +37,10 @@ export async function createUser(formData: FormData) {
 
   const hashed = await bcrypt.hash(data.password!, 10);
 
+  const kodeDosen = formData.get("kodeDosen") as string | null;
+  const kelompokKeahlianId = formData.get("kelompokKeahlianId") as string | null;
+  const prodiId = formData.get("prodiId") as string | null;
+
   await prisma.user.create({
     data: {
       name: data.name,
@@ -44,6 +48,13 @@ export async function createUser(formData: FormData) {
       password: hashed,
       role: data.role,
       identifier: data.identifier,
+      ...(data.role === "DOSEN"
+        ? {
+            kodeDosen: kodeDosen || null,
+            kelompokKeahlianId: kelompokKeahlianId || null,
+            prodiId: prodiId || null,
+          }
+        : {}),
     },
   });
 
@@ -65,6 +76,15 @@ export async function updateUser(id: string, formData: FormData) {
     role: data.role,
     identifier: data.identifier,
   };
+
+  if (data.role === "DOSEN") {
+    const kodeDosen = formData.get("kodeDosen") as string | null;
+    const kelompokKeahlianId = formData.get("kelompokKeahlianId") as string | null;
+    const prodiId = formData.get("prodiId") as string | null;
+    updateData.kodeDosen = kodeDosen || null;
+    updateData.kelompokKeahlianId = kelompokKeahlianId || null;
+    updateData.prodiId = prodiId || null;
+  }
 
   const newPassword = formData.get("password") as string;
   if (newPassword && newPassword.length >= 6) {
@@ -169,9 +189,10 @@ export async function importMahasiswa(formData: FormData): Promise<ImportResult>
       dbEmails.add(email);
       dbNims.add(nim.toLowerCase());
       result.imported++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.failed++;
-      result.errors.push({ row: rowNum, nim, email, reason: err?.message ?? "Gagal membuat akun" });
+      const reason = err instanceof Error ? err.message : "Gagal membuat akun";
+      result.errors.push({ row: rowNum, nim, email, reason });
     }
   }
 

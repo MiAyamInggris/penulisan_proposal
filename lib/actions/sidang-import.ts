@@ -2,10 +2,12 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { logAudit } from "@/lib/audit";
+import { logAudit, type AssignmentChange } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import type { ProdiCode } from "@prisma/client";
+
+export type SidangImportAction = "CREATE" | "UPDATE" | "SKIP_NO_CHANGE";
 
 export type SidangPreviewRow = {
   row: number;
@@ -25,6 +27,8 @@ export type SidangPreviewRow = {
   penguji2Id: string | null;
   status: "Valid" | "Invalid" | "Warning";
   issues: string[];
+  action: SidangImportAction;
+  changes: AssignmentChange[];
 };
 
 export type SidangPreviewResult = {
@@ -33,16 +37,22 @@ export type SidangPreviewResult = {
   valid: number;
   invalid: number;
   warnings: number;
+  willCreate: number;
+  willUpdate: number;
+  willSkipNoChange: number;
 };
+
+export type SidangCommitRowStatus = "Created" | "Updated" | "SkippedNoChange" | "SkippedInvalid" | "Failed";
 
 export type SidangCommitResult = {
   total: number;
   created: number;
   updated: number;
-  skipped: number;
+  skippedNoChange: number;
+  skippedInvalid: number;
   failed: number;
   importBatchId: string;
-  rows: { row: number; nim: string; status: string; reason?: string }[];
+  rows: { row: number; nim: string; status: SidangCommitRowStatus; reason?: string }[];
 };
 
 const VALID_PRODI: ProdiCode[] = ["RPL", "IF", "DS", "SI"];
@@ -55,6 +65,64 @@ async function requireKetuaOrAdmin() {
   const isKetuaUser = role === "DOSEN" && !!isKetua;
   if (!isAdmin && !isKetuaUser) throw new Error("Tidak terautentikasi");
   return { session, auditRole: isAdmin ? "ADMIN" : ("KETUA_KK" as const) };
+}
+
+type ExistingSidang = {
+  prodi: ProdiCode;
+  judul: string | null;
+  kelompokKeilmuan: string | null;
+  semester: string | null;
+  pembimbing1Id: string | null;
+  pembimbing2Id: string | null;
+  penguji1Id: string | null;
+  penguji2Id: string | null;
+};
+
+function diffSidangRow(
+  existing: ExistingSidang,
+  row: {
+    prodi: ProdiCode | null;
+    judul: string;
+    kelompokKeilmuan: string;
+    semester: string;
+    pembimbing1Id: string | null;
+    pembimbing2Id: string | null;
+    penguji1Id: string | null;
+    penguji2Id: string | null;
+  },
+  method: "full" | "semi",
+  kodeById: Map<string, string>
+): AssignmentChange[] {
+  const changes: AssignmentChange[] = [];
+  const label = (id: string | null) => (id ? kodeById.get(id) ?? id : "—");
+
+  if (existing.prodi !== row.prodi) {
+    changes.push({ field: "Program Studi", previous: existing.prodi, new: row.prodi ?? "—" });
+  }
+  if ((existing.judul ?? "") !== row.judul) {
+    changes.push({ field: "Judul", previous: existing.judul ?? "—", new: row.judul || "—" });
+  }
+  if ((existing.kelompokKeilmuan ?? "") !== row.kelompokKeilmuan) {
+    changes.push({ field: "Kelompok Keilmuan", previous: existing.kelompokKeilmuan ?? "—", new: row.kelompokKeilmuan || "—" });
+  }
+  if ((existing.semester ?? "") !== row.semester) {
+    changes.push({ field: "Semester", previous: existing.semester ?? "—", new: row.semester || "—" });
+  }
+  if (existing.pembimbing1Id !== row.pembimbing1Id) {
+    changes.push({ field: "Pembimbing 1 (PBB I)", previous: label(existing.pembimbing1Id), new: label(row.pembimbing1Id) });
+  }
+  if (existing.pembimbing2Id !== row.pembimbing2Id) {
+    changes.push({ field: "Pembimbing 2 (PBB II)", previous: label(existing.pembimbing2Id), new: label(row.pembimbing2Id) });
+  }
+  if (method === "full") {
+    if (existing.penguji1Id !== row.penguji1Id) {
+      changes.push({ field: "Penguji 1 (PGJ I)", previous: label(existing.penguji1Id), new: label(row.penguji1Id) });
+    }
+    if (existing.penguji2Id !== row.penguji2Id) {
+      changes.push({ field: "Penguji 2 (PGJ II)", previous: label(existing.penguji2Id), new: label(row.penguji2Id) });
+    }
+  }
+  return changes;
 }
 
 export async function previewSidangImport(
@@ -78,18 +146,38 @@ export async function previewSidangImport(
     valid: 0,
     invalid: 0,
     warnings: 0,
+    willCreate: 0,
+    willUpdate: 0,
+    willSkipNoChange: 0,
   };
 
   if (sheetRows.length === 0) return result;
 
-  // Pre-load all active dosen indexed by kodeDosen (lowercase)
+  // Pre-load all active dosen indexed by kodeDosen (lowercase), plus reverse id→kode lookup
   const allDosen = await prisma.user.findMany({
     where: { role: "DOSEN", isActive: true, kodeDosen: { not: null } },
     select: { id: true, name: true, kodeDosen: true },
   });
   const dosenByKode = new Map<string, { id: string; name: string }>();
+  const kodeById = new Map<string, string>();
   for (const d of allDosen) {
-    if (d.kodeDosen) dosenByKode.set(d.kodeDosen.toLowerCase(), { id: d.id, name: d.name });
+    if (d.kodeDosen) {
+      dosenByKode.set(d.kodeDosen.toLowerCase(), { id: d.id, name: d.name });
+      kodeById.set(d.id, d.kodeDosen);
+    }
+  }
+
+  // Pre-load existing SidangRecords for matching (NIM priority 1, Nama priority 2)
+  const existingRecords = await prisma.sidangRecord.findMany({
+    select: {
+      nim: true, nama: true, prodi: true, judul: true, kelompokKeilmuan: true, semester: true,
+      pembimbing1Id: true, pembimbing2Id: true, penguji1Id: true, penguji2Id: true,
+    },
+  });
+  const existingByNim = new Map(existingRecords.map((r) => [r.nim.toLowerCase(), r]));
+  const existingByNama = new Map<string, string>(); // nama(lower) -> nim
+  for (const r of existingRecords) {
+    existingByNama.set(r.nama.toLowerCase().trim(), r.nim);
   }
 
   for (let i = 0; i < sheetRows.length; i++) {
@@ -144,6 +232,15 @@ export async function previewSidangImport(
       if (pembimbingIds.has(penguji2.id)) warnings.push(`Penguji 2 (${kodePenguji2}) juga merupakan pembimbing`);
     }
 
+    // Mahasiswa matching: Priority 1 = NIM, Priority 2 = Nama (exact match, different NIM → warn)
+    const existing = nim ? existingByNim.get(nim.toLowerCase()) : undefined;
+    if (!existing && nim && nama) {
+      const nameMatchNim = existingByNama.get(nama.toLowerCase().trim());
+      if (nameMatchNim && nameMatchNim.toLowerCase() !== nim.toLowerCase()) {
+        warnings.push(`Nama "${nama}" cocok dengan data lain bernama sama dengan NIM berbeda (${nameMatchNim}) — periksa kemungkinan duplikat/kesalahan NIM`);
+      }
+    }
+
     const allIssues = [...issues, ...warnings];
     let status: "Valid" | "Invalid" | "Warning";
     if (issues.length > 0) {
@@ -155,6 +252,33 @@ export async function previewSidangImport(
     } else {
       status = "Valid";
       result.valid++;
+    }
+
+    const rowData = {
+      prodi,
+      judul,
+      kelompokKeilmuan,
+      semester,
+      pembimbing1Id: pembimbing1?.id ?? null,
+      pembimbing2Id: pembimbing2?.id ?? null,
+      penguji1Id: penguji1?.id ?? null,
+      penguji2Id: penguji2?.id ?? null,
+    };
+
+    let action: SidangImportAction = "CREATE";
+    let changes: AssignmentChange[] = [];
+
+    if (issues.length === 0) {
+      if (existing) {
+        changes = diffSidangRow(existing, rowData, method, kodeById);
+        action = changes.length === 0 ? "SKIP_NO_CHANGE" : "UPDATE";
+      } else {
+        action = "CREATE";
+      }
+
+      if (action === "CREATE") result.willCreate++;
+      else if (action === "UPDATE") result.willUpdate++;
+      else result.willSkipNoChange++;
     }
 
     result.rows.push({
@@ -175,6 +299,8 @@ export async function previewSidangImport(
       penguji2Id: penguji2?.id ?? null,
       status,
       issues: allIssues,
+      action,
+      changes,
     });
   }
 
@@ -193,50 +319,111 @@ export async function commitSidangImport(
     total: rows.length,
     created: 0,
     updated: 0,
-    skipped: 0,
+    skippedNoChange: 0,
+    skippedInvalid: 0,
     failed: 0,
     importBatchId,
     rows: [],
   };
 
+  // Reverse id→kode lookup for audit messages
+  const allDosen = await prisma.user.findMany({
+    where: { role: "DOSEN" },
+    select: { id: true, kodeDosen: true },
+  });
+  const kodeById = new Map(allDosen.filter((d) => d.kodeDosen).map((d) => [d.id, d.kodeDosen!]));
+
   for (const row of rows) {
     if (row.status === "Invalid") {
-      result.skipped++;
-      result.rows.push({ row: row.row, nim: row.nim, status: "Skipped", reason: row.issues.join("; ") });
+      result.skippedInvalid++;
+      result.rows.push({ row: row.row, nim: row.nim, status: "SkippedInvalid", reason: row.issues.join("; ") });
       continue;
     }
     if (!row.prodi || !row.pembimbing1Id) {
-      result.skipped++;
-      result.rows.push({ row: row.row, nim: row.nim, status: "Skipped", reason: "Data tidak lengkap" });
+      result.skippedInvalid++;
+      result.rows.push({ row: row.row, nim: row.nim, status: "SkippedInvalid", reason: "Data tidak lengkap" });
       continue;
     }
 
     try {
-      const existing = await prisma.sidangRecord.findUnique({ where: { nim: row.nim }, select: { id: true } });
-
-      const data = {
-        nama: row.nama,
-        prodi: row.prodi,
-        judul: row.judul || null,
-        kelompokKeilmuan: row.kelompokKeilmuan || null,
-        semester: row.semester || null,
-        pembimbing1Id: row.pembimbing1Id,
-        pembimbing2Id: row.pembimbing2Id ?? null,
-        ...(method === "full" ? { penguji1Id: row.penguji1Id ?? null, penguji2Id: row.penguji2Id ?? null } : {}),
-        importBatchId,
-        importedById: session.user.id,
-      };
-
-      await prisma.sidangRecord.upsert({
+      const existing = await prisma.sidangRecord.findUnique({
         where: { nim: row.nim },
-        create: { nim: row.nim, ...data },
-        update: data,
+        select: {
+          id: true, prodi: true, judul: true, kelompokKeilmuan: true, semester: true,
+          pembimbing1Id: true, pembimbing2Id: true, penguji1Id: true, penguji2Id: true,
+        },
       });
 
+      const rowData = {
+        prodi: row.prodi,
+        judul: row.judul,
+        kelompokKeilmuan: row.kelompokKeilmuan,
+        semester: row.semester,
+        pembimbing1Id: row.pembimbing1Id,
+        pembimbing2Id: row.pembimbing2Id,
+        penguji1Id: row.penguji1Id,
+        penguji2Id: row.penguji2Id,
+      };
+
       if (existing) {
+        const changes = diffSidangRow(existing, rowData, method, kodeById);
+        if (changes.length === 0) {
+          result.skippedNoChange++;
+          result.rows.push({ row: row.row, nim: row.nim, status: "SkippedNoChange" });
+          continue;
+        }
+
+        await prisma.sidangRecord.update({
+          where: { nim: row.nim },
+          data: {
+            nama: row.nama,
+            prodi: row.prodi,
+            judul: row.judul || null,
+            kelompokKeilmuan: row.kelompokKeilmuan || null,
+            semester: row.semester || null,
+            pembimbing1Id: row.pembimbing1Id,
+            pembimbing2Id: row.pembimbing2Id ?? null,
+            ...(method === "full" ? { penguji1Id: row.penguji1Id ?? null, penguji2Id: row.penguji2Id ?? null } : {}),
+            importBatchId,
+            importedById: session.user.id,
+          },
+        });
+
         result.updated++;
-        result.rows.push({ row: row.row, nim: row.nim, status: "Updated" });
+        result.rows.push({ row: row.row, nim: row.nim, status: "Updated", reason: changes.map((c) => `${c.field}: ${c.previous} → ${c.new}`).join("; ") });
+
+        await logAudit(
+          session.user.id,
+          auditRole,
+          "ASSIGNMENT_UPDATED",
+          {
+            source: "PLOTTING_PENGUJI",
+            nim: row.nim,
+            nama: row.nama,
+            changes,
+            message: changes.map((c) => `${c.field}: ${c.previous} → ${c.new}`).join("; "),
+          },
+          "SIDANG_RECORD",
+          existing.id
+        );
       } else {
+        await prisma.sidangRecord.create({
+          data: {
+            nim: row.nim,
+            nama: row.nama,
+            prodi: row.prodi,
+            judul: row.judul || null,
+            kelompokKeilmuan: row.kelompokKeilmuan || null,
+            semester: row.semester || null,
+            pembimbing1Id: row.pembimbing1Id,
+            pembimbing2Id: row.pembimbing2Id ?? null,
+            penguji1Id: method === "full" ? (row.penguji1Id ?? null) : null,
+            penguji2Id: method === "full" ? (row.penguji2Id ?? null) : null,
+            importBatchId,
+            importedById: session.user.id,
+          },
+        });
+
         result.created++;
         result.rows.push({ row: row.row, nim: row.nim, status: "Created" });
       }
@@ -256,10 +443,11 @@ export async function commitSidangImport(
       total: result.total,
       created: result.created,
       updated: result.updated,
-      skipped: result.skipped,
+      skippedNoChange: result.skippedNoChange,
+      skippedInvalid: result.skippedInvalid,
       failed: result.failed,
       importBatchId,
-      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} imported ${result.created + result.updated} sidang records via Metode ${method === "full" ? "1" : "2"}.`,
+      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} imported ${result.created} new and updated ${result.updated} sidang records via Metode ${method === "full" ? "1" : "2"}.`,
     },
     "SIDANG_RECORD"
   );

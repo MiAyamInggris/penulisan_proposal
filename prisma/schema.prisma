@@ -82,6 +82,7 @@ model User {
   maxBimbinganQuota    Int      @default(5)
   kodeDosen            String?
   kelompokKeahlianId   String?
+  prodiId              String?
   createdAt            DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -108,6 +109,7 @@ model User {
   kelompokKeahlian KelompokKeahlian? @relation("KKAnggota", fields: [kelompokKeahlianId], references: [id])
   ketuaDiKK        KelompokKeahlian? @relation("KKKetua")
   kaprodiDiProdi   Program?          @relation("KaprodiProgram")
+  prodi            Program?          @relation("DosenProdi", fields: [prodiId], references: [id])
   auditLogs        AuditLog[]        @relation("AuditLogUser")
 }
 
@@ -121,8 +123,9 @@ model Program {
   presentasiPct       Float
   kaprodiId           String?   @unique
 
-  classes Class[]
-  kaprodi User?  @relation("KaprodiProgram", fields: [kaprodiId], references: [id])
+  classes  Class[]
+  kaprodi  User?  @relation("KaprodiProgram", fields: [kaprodiId], references: [id])
+  dosenList User[] @relation("DosenProdi")
 }
 
 model Class {

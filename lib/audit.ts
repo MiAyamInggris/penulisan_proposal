@@ -16,7 +16,10 @@ export type AuditAction =
   | "GRADUATE_STUDENT"
   | "SIDANG_IMPORT_BULK"
   | "ASSIGN_PENGUJI_SIDANG"
-  | "REASSIGN_PENGUJI_SIDANG";
+  | "REASSIGN_PENGUJI_SIDANG"
+  | "ASSIGNMENT_UPDATED";
+
+export type AssignmentChange = { field: string; previous: string; new: string };
 
 export type AssessmentType =
   | "NILAI_BIMBINGAN"
