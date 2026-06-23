@@ -99,6 +99,12 @@ model User {
   eprtVerifications      EprtRecord[]      @relation("EprtVerifier")
   notificationsReceived  Notification[]    @relation("NotificationRecipient")
 
+  sidangAsPembimbing1 SidangRecord[] @relation("SidangPembimbing1")
+  sidangAsPembimbing2 SidangRecord[] @relation("SidangPembimbing2")
+  sidangAsPenguji1    SidangRecord[] @relation("SidangPenguji1")
+  sidangAsPenguji2    SidangRecord[] @relation("SidangPenguji2")
+  sidangImports       SidangRecord[] @relation("SidangImportedBy")
+
   kelompokKeahlian KelompokKeahlian? @relation("KKAnggota", fields: [kelompokKeahlianId], references: [id])
   ketuaDiKK        KelompokKeahlian? @relation("KKKetua")
   kaprodiDiProdi   Program?          @relation("KaprodiProgram")
@@ -366,6 +372,34 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   user User @relation("AuditLogUser", fields: [userId], references: [id])
+}
+
+// ─── Sidang (Final Defense) ───────────────────────────────────────────────────
+
+model SidangRecord {
+  id               String    @id @default(cuid())
+  nim              String    @unique
+  nama             String
+  prodi            ProdiCode
+  judul            String?
+  kelompokKeilmuan String?
+
+  pembimbing1Id String?
+  pembimbing2Id String?
+  penguji1Id    String?
+  penguji2Id    String?
+
+  pembimbing1 User? @relation("SidangPembimbing1", fields: [pembimbing1Id], references: [id])
+  pembimbing2 User? @relation("SidangPembimbing2", fields: [pembimbing2Id], references: [id])
+  penguji1    User? @relation("SidangPenguji1",    fields: [penguji1Id],    references: [id])
+  penguji2    User? @relation("SidangPenguji2",    fields: [penguji2Id],    references: [id])
+
+  importBatchId String?
+  importedById  String
+  importedBy    User    @relation("SidangImportedBy", fields: [importedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────

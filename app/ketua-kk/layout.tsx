@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
-import { LayoutDashboard, Users, Sliders, Settings, Upload, UserX, GraduationCap } from "lucide-react";
+import { LayoutDashboard, Users, Sliders, Settings, Upload, UserX, GraduationCap, Shield } from "lucide-react";
 
 const navItems = [
   {
@@ -23,6 +23,11 @@ const navItems = [
     href: "/ketua-kk/update-lulus",
     label: "Update Mahasiswa Lulus",
     icon: <GraduationCap className="h-4 w-4" />,
+  },
+  {
+    href: "/ketua-kk/plotting-sidang",
+    label: "Plotting Sidang",
+    icon: <Shield className="h-4 w-4" />,
   },
   {
     href: "/ketua-kk/kuota",
