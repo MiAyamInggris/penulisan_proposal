@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getGlobalQuota } from "@/lib/settings";
 import { getMyKK } from "@/lib/kk";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Users, BookOpen, Activity, ClipboardCheck, BarChart3, TrendingUp, GraduationCap, Shield } from "lucide-react";
+import { AlertCircle, Users, BookOpen, Activity, ClipboardCheck, BarChart3, TrendingUp, GraduationCap } from "lucide-react";
 import { DosenWorkloadTable } from "../dosen-workload-table";
 import type { DosenRow } from "../dosen-workload-table";
 
@@ -113,12 +113,6 @@ export default async function KetuaKKDashboard() {
               },
             },
           },
-        },
-        sidangAsPenguji1: {
-          select: { id: true, nim: true, nama: true, prodi: true },
-        },
-        sidangAsPenguji2: {
-          select: { id: true, nim: true, nama: true, prodi: true },
         },
       },
       orderBy: { name: "asc" },
@@ -258,15 +252,6 @@ export default async function KetuaKKDashboard() {
         ? "normal"
         : "ringan";
 
-    const penguji1Count = d.sidangAsPenguji1.length;
-    const penguji2Count = d.sidangAsPenguji2.length;
-    const totalPengujiCount = penguji1Count + penguji2Count;
-
-    const sidangAsPenguji = [
-      ...d.sidangAsPenguji1.map((s) => ({ ...s, prodi: s.prodi as string, role: "PGJ1" as const })),
-      ...d.sidangAsPenguji2.map((s) => ({ ...s, prodi: s.prodi as string, role: "PGJ2" as const })),
-    ];
-
     return {
       id: d.id,
       name: d.name,
@@ -277,9 +262,6 @@ export default async function KetuaKKDashboard() {
       activeCount,
       graduatedCount,
       deCount,
-      penguji1Count,
-      penguji2Count,
-      totalPengujiCount,
       potentialTotal,
       duplicateActiveCount,
       remaining,
@@ -289,7 +271,6 @@ export default async function KetuaKKDashboard() {
       activeAssignments,
       graduatedAssignments,
       deAssignments,
-      sidangAsPenguji,
     };
   });
 
@@ -305,7 +286,6 @@ export default async function KetuaKKDashboard() {
   ).size;
   const totalBimbingan = rows.reduce((a, r) => a + r.potentialTotal, 0);
   const totalDE = rows.reduce((a, r) => a + r.deCount, 0);
-  const totalPengujiSidang = rows.reduce((a, r) => a + r.totalPengujiCount, 0);
   const avgLoad = rows.length > 0 ? totalBimbingan / rows.length : 0;
 
   return (
@@ -319,7 +299,7 @@ export default async function KetuaKKDashboard() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <Card>
           <CardContent className="pt-5">
             <div className="flex flex-col gap-1">
@@ -391,19 +371,6 @@ export default async function KetuaKKDashboard() {
               </div>
               <p className="text-xs text-gray-500 mt-1">Total DE</p>
               <p className="text-2xl font-bold text-orange-700">{totalDE}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex flex-col gap-1">
-              <div className="p-2 rounded-lg bg-rose-50 text-rose-600 w-fit">
-                <Shield className="h-4 w-4" />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Total Penguji Sidang</p>
-              <p className="text-2xl font-bold text-rose-700">{totalPengujiSidang}</p>
-              <p className="text-[10px] text-gray-400">penugasan</p>
             </div>
           </CardContent>
         </Card>

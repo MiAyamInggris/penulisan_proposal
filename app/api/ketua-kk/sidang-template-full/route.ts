@@ -21,6 +21,7 @@ export async function GET() {
       "Kode Penguji 1": "CCS",
       "Kode Penguji 2": "DDT",
       "Kelompok Keilmuan": "Rekayasa Perangkat Lunak",
+      "Semester": "Ganjil 2024/2025",
     },
     {
       NIM: "6701180002",
@@ -32,6 +33,7 @@ export async function GET() {
       "Kode Penguji 1": "FFV",
       "Kode Penguji 2": "GGW",
       "Kelompok Keilmuan": "Kecerdasan Buatan",
+      "Semester": "Ganjil 2024/2025",
     },
   ];
 
@@ -69,7 +71,7 @@ export async function GET() {
   const wsData = XLSX.utils.json_to_sheet(dataRows);
   wsData["!cols"] = [
     { wch: 14 }, { wch: 28 }, { wch: 14 }, { wch: 40 },
-    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 30 },
+    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 30 }, { wch: 20 },
   ];
   XLSX.utils.book_append_sheet(wb, wsData, "Template");
 

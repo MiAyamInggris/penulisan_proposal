@@ -394,6 +394,7 @@ model SidangRecord {
   penguji1    User? @relation("SidangPenguji1",    fields: [penguji1Id],    references: [id])
   penguji2    User? @relation("SidangPenguji2",    fields: [penguji2Id],    references: [id])
 
+  semester      String?
   importBatchId String?
   importedById  String
   importedBy    User    @relation("SidangImportedBy", fields: [importedById], references: [id])

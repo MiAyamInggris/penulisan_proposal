@@ -14,6 +14,7 @@ export type SidangPreviewRow = {
   prodi: ProdiCode | null;
   judul: string;
   kelompokKeilmuan: string;
+  semester: string;
   kodePembimbing1: string;
   kodePembimbing2: string;
   kodePenguji1: string;
@@ -100,6 +101,7 @@ export async function previewSidangImport(
     const prodiRaw = String(row["Program Studi"] ?? "").trim().toUpperCase();
     const judul = String(row["Judul"] ?? "").trim();
     const kelompokKeilmuan = String(row["Kelompok Keilmuan"] ?? "").trim();
+    const semester = String(row["Semester"] ?? "").trim();
     const kodePembimbing1 = String(row["Kode Pembimbing 1"] ?? "").trim();
     const kodePembimbing2 = String(row["Kode Pembimbing 2"] ?? "").trim();
     const kodePenguji1 = method === "full" ? String(row["Kode Penguji 1"] ?? "").trim() : "";
@@ -162,6 +164,7 @@ export async function previewSidangImport(
       prodi,
       judul,
       kelompokKeilmuan,
+      semester,
       kodePembimbing1,
       kodePembimbing2,
       kodePenguji1,
@@ -216,6 +219,7 @@ export async function commitSidangImport(
         prodi: row.prodi,
         judul: row.judul || null,
         kelompokKeilmuan: row.kelompokKeilmuan || null,
+        semester: row.semester || null,
         pembimbing1Id: row.pembimbing1Id,
         pembimbing2Id: row.pembimbing2Id ?? null,
         ...(method === "full" ? { penguji1Id: row.penguji1Id ?? null, penguji2Id: row.penguji2Id ?? null } : {}),
@@ -260,8 +264,8 @@ export async function commitSidangImport(
     "SIDANG_RECORD"
   );
 
-  revalidatePath("/ketua-kk/plotting-sidang");
-  revalidatePath("/ketua-kk/dashboard");
+  revalidatePath("/ketua-kk/plotting-penguji");
+  revalidatePath("/ketua-kk/plotting-penguji/beban-dosen");
   revalidatePath("/admin/audit-log");
 
   return result;

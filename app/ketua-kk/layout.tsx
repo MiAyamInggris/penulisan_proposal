@@ -25,8 +25,13 @@ const navItems = [
     icon: <GraduationCap className="h-4 w-4" />,
   },
   {
-    href: "/ketua-kk/plotting-sidang",
-    label: "Plotting Sidang",
+    href: "/ketua-kk/plotting-penguji",
+    label: "Plotting Penguji",
+    icon: <Shield className="h-4 w-4" />,
+  },
+  {
+    href: "/ketua-kk/plotting-penguji/beban-dosen",
+    label: "Beban Dosen Penguji",
     icon: <Shield className="h-4 w-4" />,
   },
   {

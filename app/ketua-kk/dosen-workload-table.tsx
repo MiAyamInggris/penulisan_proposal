@@ -50,14 +50,6 @@ type DEAssignment = {
   isRetake: boolean;
 };
 
-type SidangRef = {
-  id: string;
-  nim: string;
-  nama: string;
-  prodi: string;
-  role: "PGJ1" | "PGJ2";
-};
-
 export type DosenRow = {
   id: string;
   name: string;
@@ -68,9 +60,6 @@ export type DosenRow = {
   activeCount: number;
   graduatedCount: number;
   deCount: number;
-  penguji1Count: number;
-  penguji2Count: number;
-  totalPengujiCount: number;
   potentialTotal: number;
   duplicateActiveCount: number;
   remaining: number;
@@ -80,7 +69,6 @@ export type DosenRow = {
   activeAssignments: Assignment[];
   graduatedAssignments: Assignment[];
   deAssignments: DEAssignment[];
-  sidangAsPenguji: SidangRef[];
 };
 
 // ── Status helpers ────────────────────────────────────────────────────────────
@@ -395,45 +383,6 @@ function DosenDetailDialog({
           <DETable assignments={row.deAssignments} />
         </div>
 
-        {/* Penguji Sidang */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-            Penguji Sidang
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-rose-50 text-rose-700">
-              {row.totalPengujiCount}
-            </span>
-          </h4>
-          {row.sidangAsPenguji.length === 0 ? (
-            <p className="text-xs text-gray-400 italic py-2 px-1">Tidak ada data</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b text-gray-500">
-                    <th className="text-left py-1.5 pr-3 font-medium">NIM</th>
-                    <th className="text-left py-1.5 pr-3 font-medium">Nama</th>
-                    <th className="text-left py-1.5 pr-3 font-medium">Prodi</th>
-                    <th className="text-left py-1.5 font-medium">Peran</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {row.sidangAsPenguji.map((s) => (
-                    <tr key={`${s.id}-${s.role}`} className="border-b last:border-0">
-                      <td className="py-1.5 pr-3 font-mono text-gray-600">{s.nim}</td>
-                      <td className="py-1.5 pr-3 font-medium text-gray-800">{s.nama}</td>
-                      <td className="py-1.5 pr-3 text-gray-600">{s.prodi}</td>
-                      <td className="py-1.5">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${s.role === "PGJ1" ? "bg-rose-50 text-rose-700" : "bg-pink-50 text-pink-700"}`}>
-                          {s.role}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
       </DialogContent>
     </Dialog>
   );
@@ -484,7 +433,6 @@ export function DosenWorkloadTable({
               <th className="text-center px-4 py-3 font-medium">Total Workload</th>
               <th className="text-center px-4 py-3 font-medium">Remaining Capacity</th>
               <th className="text-center px-4 py-3 font-medium">DE</th>
-              <th className="text-center px-4 py-3 font-medium">Penguji Sidang</th>
               <th className="text-center px-4 py-3 font-medium">Beban</th>
             </tr>
           </thead>
@@ -552,9 +500,6 @@ export function DosenWorkloadTable({
                   </td>
                   <td className="px-4 py-3 text-center text-orange-700 font-medium">
                     {d.deCount > 0 ? d.deCount : <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-center text-rose-700 font-medium">
-                    {d.totalPengujiCount > 0 ? d.totalPengujiCount : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-center">
