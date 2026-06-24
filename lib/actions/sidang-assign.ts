@@ -53,6 +53,7 @@ export async function assignPengujiSidang(
       penguji2Id: true,
       pembimbing1Id: true,
       pembimbing2Id: true,
+      kelompokKeahlian: { select: { nama: true } },
     },
   });
   if (!record) return { success: false, error: "Data sidang tidak ditemukan" };
@@ -77,12 +78,14 @@ export async function assignPengujiSidang(
       sidangRecordId,
       nim: record.nim,
       nama: record.nama,
+      kelompokKeahlian: record.kelompokKeahlian.nama,
       penguji1Id,
       penguji1Name: penguji1.name,
       penguji2Id: penguji2Id ?? null,
       penguji2Name: penguji2?.name ?? null,
       isReassign,
       warnings: warnings.length > 0 ? warnings : undefined,
+      message: `Penguji ${isReassign ? "diubah" : "ditugaskan"} untuk ${record.nim} (KK: ${record.kelompokKeahlian.nama})`,
     },
     "SIDANG_RECORD",
     sidangRecordId
@@ -130,7 +133,7 @@ export async function bulkAssignPengujiSidang(
     try {
       const record = await prisma.sidangRecord.findUnique({
         where: { id },
-        select: { id: true, nim: true, nama: true, penguji1Id: true },
+        select: { id: true, nim: true, nama: true, penguji1Id: true, kelompokKeahlian: { select: { nama: true } } },
       });
       if (!record) {
         result.failed++;
@@ -152,13 +155,14 @@ export async function bulkAssignPengujiSidang(
           sidangRecordId: id,
           nim: record.nim,
           nama: record.nama,
+          kelompokKeahlian: record.kelompokKeahlian.nama,
           penguji1Id,
           penguji1Name: penguji1.name,
           penguji2Id: penguji2Id ?? null,
           penguji2Name: penguji2?.name ?? null,
           isBulk: true,
           isReassign,
-          message: `${isReassign ? "Reassign" : "Assign"} PGJ I to ${record.nim}.`,
+          message: `${isReassign ? "Reassign" : "Assign"} PGJ I to ${record.nim} (KK: ${record.kelompokKeahlian.nama}).`,
         },
         "SIDANG_RECORD",
         id

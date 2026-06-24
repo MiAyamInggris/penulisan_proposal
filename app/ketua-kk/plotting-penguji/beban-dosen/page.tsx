@@ -3,6 +3,20 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { BebanDosenSidangClient } from "@/components/beban-dosen-sidang-client";
 
+export type KKStudentItem = {
+  nim: string;
+  nama: string;
+  judul: string | null;
+  prodi: string;
+};
+
+export type KKBreakdownItem = {
+  kkId: string;
+  kkNama: string;
+  count: number;
+  students: KKStudentItem[];
+};
+
 export type BebanDosenRow = {
   id: string;
   name: string;
@@ -11,6 +25,8 @@ export type BebanDosenRow = {
   jumlahPembimbing: number;
   jumlahPenguji: number;
   totalBeban: number;
+  pembimbingByKK: KKBreakdownItem[];
+  pengujiByKK: KKBreakdownItem[];
 };
 
 export default async function BebanDosenPage() {
@@ -19,13 +35,19 @@ export default async function BebanDosenPage() {
     redirect("/ketua-kk/dashboard");
   }
 
-  // Aggregate beban from SidangRecord
+  // Aggregate beban from SidangRecord, grouped by originating Kelompok Keahlian
   const records = await prisma.sidangRecord.findMany({
     select: {
+      nim: true,
+      nama: true,
+      judul: true,
+      prodi: true,
       pembimbing1Id: true,
       pembimbing2Id: true,
       penguji1Id: true,
       penguji2Id: true,
+      kelompokKeahlianId: true,
+      kelompokKeahlian: { select: { nama: true } },
     },
   });
 
@@ -65,20 +87,41 @@ export default async function BebanDosenPage() {
     orderBy: { name: "asc" },
   });
 
-  // Compute counts per dosen
-  const pembimbingCount = new Map<string, number>();
-  const pengujiCount = new Map<string, number>();
+  // Per-dosen, per-KK breakdown maps
+  type KKAccum = Map<string, { kkNama: string; students: KKStudentItem[] }>;
+  const pembimbingByDosen = new Map<string, KKAccum>();
+  const pengujiByDosen = new Map<string, KKAccum>();
+
+  const addToBreakdown = (map: Map<string, KKAccum>, dosenId: string, kkId: string, kkNama: string, student: KKStudentItem) => {
+    if (!map.has(dosenId)) map.set(dosenId, new Map());
+    const kkMap = map.get(dosenId)!;
+    if (!kkMap.has(kkId)) kkMap.set(kkId, { kkNama, students: [] });
+    kkMap.get(kkId)!.students.push(student);
+  };
 
   for (const r of records) {
-    if (r.pembimbing1Id) pembimbingCount.set(r.pembimbing1Id, (pembimbingCount.get(r.pembimbing1Id) ?? 0) + 1);
-    if (r.pembimbing2Id) pembimbingCount.set(r.pembimbing2Id, (pembimbingCount.get(r.pembimbing2Id) ?? 0) + 1);
-    if (r.penguji1Id) pengujiCount.set(r.penguji1Id, (pengujiCount.get(r.penguji1Id) ?? 0) + 1);
-    if (r.penguji2Id) pengujiCount.set(r.penguji2Id, (pengujiCount.get(r.penguji2Id) ?? 0) + 1);
+    const student: KKStudentItem = { nim: r.nim, nama: r.nama, judul: r.judul, prodi: r.prodi };
+    const kkId = r.kelompokKeahlianId;
+    const kkNama = r.kelompokKeahlian.nama;
+
+    if (r.pembimbing1Id) addToBreakdown(pembimbingByDosen, r.pembimbing1Id, kkId, kkNama, student);
+    if (r.pembimbing2Id) addToBreakdown(pembimbingByDosen, r.pembimbing2Id, kkId, kkNama, student);
+    if (r.penguji1Id) addToBreakdown(pengujiByDosen, r.penguji1Id, kkId, kkNama, student);
+    if (r.penguji2Id) addToBreakdown(pengujiByDosen, r.penguji2Id, kkId, kkNama, student);
   }
 
+  const toBreakdownArray = (kkMap: KKAccum | undefined): KKBreakdownItem[] => {
+    if (!kkMap) return [];
+    return [...kkMap.entries()]
+      .map(([kkId, v]) => ({ kkId, kkNama: v.kkNama, count: v.students.length, students: v.students }))
+      .sort((a, b) => b.count - a.count);
+  };
+
   const rows: BebanDosenRow[] = dosenList.map((d) => {
-    const jumlahPembimbing = pembimbingCount.get(d.id) ?? 0;
-    const jumlahPenguji = pengujiCount.get(d.id) ?? 0;
+    const pembimbingByKK = toBreakdownArray(pembimbingByDosen.get(d.id));
+    const pengujiByKK = toBreakdownArray(pengujiByDosen.get(d.id));
+    const jumlahPembimbing = pembimbingByKK.reduce((a, k) => a + k.count, 0);
+    const jumlahPenguji = pengujiByKK.reduce((a, k) => a + k.count, 0);
     return {
       id: d.id,
       name: d.name,
@@ -87,6 +130,8 @@ export default async function BebanDosenPage() {
       jumlahPembimbing,
       jumlahPenguji,
       totalBeban: jumlahPembimbing + jumlahPenguji,
+      pembimbingByKK,
+      pengujiByKK,
     };
   });
 

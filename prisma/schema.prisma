@@ -360,6 +360,7 @@ model KelompokKeahlian {
 
   ketua User?  @relation("KKKetua", fields: [ketuaId], references: [id])
   dosen User[] @relation("KKAnggota")
+  sidangRecords SidangRecord[] @relation("SidangKelompokKeahlian")
 }
 
 // ─── Audit Log ───────────────────────────────────────────────────────────────
@@ -385,7 +386,9 @@ model SidangRecord {
   nama             String
   prodi            ProdiCode
   judul            String?
-  kelompokKeilmuan String?
+
+  kelompokKeahlianId String
+  kelompokKeahlian   KelompokKeahlian @relation("SidangKelompokKeahlian", fields: [kelompokKeahlianId], references: [id])
 
   pembimbing1Id String?
   pembimbing2Id String?

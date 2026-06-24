@@ -15,8 +15,10 @@ export type SidangPreviewRow = {
   nama: string;
   prodi: ProdiCode | null;
   judul: string;
-  kelompokKeilmuan: string;
   semester: string;
+  kodeKelompokKeahlian: string;
+  kelompokKeahlianId: string | null;
+  kelompokKeahlianNama: string | null;
   kodePembimbing1: string;
   kodePembimbing2: string;
   kodePenguji1: string;
@@ -70,8 +72,8 @@ async function requireKetuaOrAdmin() {
 type ExistingSidang = {
   prodi: ProdiCode;
   judul: string | null;
-  kelompokKeilmuan: string | null;
   semester: string | null;
+  kelompokKeahlianId: string;
   pembimbing1Id: string | null;
   pembimbing2Id: string | null;
   penguji1Id: string | null;
@@ -83,18 +85,20 @@ function diffSidangRow(
   row: {
     prodi: ProdiCode | null;
     judul: string;
-    kelompokKeilmuan: string;
     semester: string;
+    kelompokKeahlianId: string | null;
     pembimbing1Id: string | null;
     pembimbing2Id: string | null;
     penguji1Id: string | null;
     penguji2Id: string | null;
   },
   method: "full" | "semi",
-  kodeById: Map<string, string>
+  kodeById: Map<string, string>,
+  kkNameById: Map<string, string>
 ): AssignmentChange[] {
   const changes: AssignmentChange[] = [];
   const label = (id: string | null) => (id ? kodeById.get(id) ?? id : "—");
+  const kkLabel = (id: string | null) => (id ? kkNameById.get(id) ?? id : "—");
 
   if (existing.prodi !== row.prodi) {
     changes.push({ field: "Program Studi", previous: existing.prodi, new: row.prodi ?? "—" });
@@ -102,8 +106,8 @@ function diffSidangRow(
   if ((existing.judul ?? "") !== row.judul) {
     changes.push({ field: "Judul", previous: existing.judul ?? "—", new: row.judul || "—" });
   }
-  if ((existing.kelompokKeilmuan ?? "") !== row.kelompokKeilmuan) {
-    changes.push({ field: "Kelompok Keilmuan", previous: existing.kelompokKeilmuan ?? "—", new: row.kelompokKeilmuan || "—" });
+  if (existing.kelompokKeahlianId !== row.kelompokKeahlianId) {
+    changes.push({ field: "Kelompok Keahlian", previous: kkLabel(existing.kelompokKeahlianId), new: kkLabel(row.kelompokKeahlianId) });
   }
   if ((existing.semester ?? "") !== row.semester) {
     changes.push({ field: "Semester", previous: existing.semester ?? "—", new: row.semester || "—" });
@@ -167,10 +171,15 @@ export async function previewSidangImport(
     }
   }
 
+  // Pre-load Kelompok Keahlian for mandatory matching (by exact name, case-insensitive)
+  const kkList = await prisma.kelompokKeahlian.findMany({ select: { id: true, nama: true } });
+  const kkByName = new Map(kkList.map((k) => [k.nama.toLowerCase().trim(), k]));
+  const kkNameById = new Map(kkList.map((k) => [k.id, k.nama]));
+
   // Pre-load existing SidangRecords for matching (NIM priority 1, Nama priority 2)
   const existingRecords = await prisma.sidangRecord.findMany({
     select: {
-      nim: true, nama: true, prodi: true, judul: true, kelompokKeilmuan: true, semester: true,
+      nim: true, nama: true, prodi: true, judul: true, semester: true, kelompokKeahlianId: true,
       pembimbing1Id: true, pembimbing2Id: true, penguji1Id: true, penguji2Id: true,
     },
   });
@@ -188,8 +197,8 @@ export async function previewSidangImport(
     const nama = String(row["Nama Mahasiswa"] ?? "").trim();
     const prodiRaw = String(row["Program Studi"] ?? "").trim().toUpperCase();
     const judul = String(row["Judul"] ?? "").trim();
-    const kelompokKeilmuan = String(row["Kelompok Keilmuan"] ?? "").trim();
     const semester = String(row["Semester"] ?? "").trim();
+    const kodeKelompokKeahlian = String(row["Kelompok Keahlian"] ?? "").trim();
     const kodePembimbing1 = String(row["Kode Pembimbing 1"] ?? "").trim();
     const kodePembimbing2 = String(row["Kode Pembimbing 2"] ?? "").trim();
     const kodePenguji1 = method === "full" ? String(row["Kode Penguji 1"] ?? "").trim() : "";
@@ -209,6 +218,14 @@ export async function previewSidangImport(
     }
 
     const prodi = VALID_PRODI.includes(prodiRaw as ProdiCode) ? (prodiRaw as ProdiCode) : null;
+
+    // Kelompok Keahlian is mandatory (spec 950-952)
+    const kk = kodeKelompokKeahlian ? (kkByName.get(kodeKelompokKeahlian.toLowerCase()) ?? null) : null;
+    if (!kodeKelompokKeahlian) {
+      issues.push("Kolom Kelompok Keahlian wajib diisi");
+    } else if (!kk) {
+      issues.push(`Kelompok Keahlian "${kodeKelompokKeahlian}" tidak ditemukan — gunakan nama KK yang sesuai`);
+    }
 
     // Resolve dosen codes
     const pembimbing1 = kodePembimbing1 ? (dosenByKode.get(kodePembimbing1.toLowerCase()) ?? null) : null;
@@ -257,8 +274,8 @@ export async function previewSidangImport(
     const rowData = {
       prodi,
       judul,
-      kelompokKeilmuan,
       semester,
+      kelompokKeahlianId: kk?.id ?? null,
       pembimbing1Id: pembimbing1?.id ?? null,
       pembimbing2Id: pembimbing2?.id ?? null,
       penguji1Id: penguji1?.id ?? null,
@@ -270,7 +287,7 @@ export async function previewSidangImport(
 
     if (issues.length === 0) {
       if (existing) {
-        changes = diffSidangRow(existing, rowData, method, kodeById);
+        changes = diffSidangRow(existing, rowData, method, kodeById, kkNameById);
         action = changes.length === 0 ? "SKIP_NO_CHANGE" : "UPDATE";
       } else {
         action = "CREATE";
@@ -287,8 +304,10 @@ export async function previewSidangImport(
       nama,
       prodi,
       judul,
-      kelompokKeilmuan,
       semester,
+      kodeKelompokKeahlian,
+      kelompokKeahlianId: kk?.id ?? null,
+      kelompokKeahlianNama: kk?.nama ?? null,
       kodePembimbing1,
       kodePembimbing2,
       kodePenguji1,
@@ -332,6 +351,8 @@ export async function commitSidangImport(
     select: { id: true, kodeDosen: true },
   });
   const kodeById = new Map(allDosen.filter((d) => d.kodeDosen).map((d) => [d.id, d.kodeDosen!]));
+  const kkList = await prisma.kelompokKeahlian.findMany({ select: { id: true, nama: true } });
+  const kkNameById = new Map(kkList.map((k) => [k.id, k.nama]));
 
   for (const row of rows) {
     if (row.status === "Invalid") {
@@ -339,7 +360,7 @@ export async function commitSidangImport(
       result.rows.push({ row: row.row, nim: row.nim, status: "SkippedInvalid", reason: row.issues.join("; ") });
       continue;
     }
-    if (!row.prodi || !row.pembimbing1Id) {
+    if (!row.prodi || !row.pembimbing1Id || !row.kelompokKeahlianId) {
       result.skippedInvalid++;
       result.rows.push({ row: row.row, nim: row.nim, status: "SkippedInvalid", reason: "Data tidak lengkap" });
       continue;
@@ -349,7 +370,7 @@ export async function commitSidangImport(
       const existing = await prisma.sidangRecord.findUnique({
         where: { nim: row.nim },
         select: {
-          id: true, prodi: true, judul: true, kelompokKeilmuan: true, semester: true,
+          id: true, prodi: true, judul: true, semester: true, kelompokKeahlianId: true,
           pembimbing1Id: true, pembimbing2Id: true, penguji1Id: true, penguji2Id: true,
         },
       });
@@ -357,8 +378,8 @@ export async function commitSidangImport(
       const rowData = {
         prodi: row.prodi,
         judul: row.judul,
-        kelompokKeilmuan: row.kelompokKeilmuan,
         semester: row.semester,
+        kelompokKeahlianId: row.kelompokKeahlianId,
         pembimbing1Id: row.pembimbing1Id,
         pembimbing2Id: row.pembimbing2Id,
         penguji1Id: row.penguji1Id,
@@ -366,7 +387,7 @@ export async function commitSidangImport(
       };
 
       if (existing) {
-        const changes = diffSidangRow(existing, rowData, method, kodeById);
+        const changes = diffSidangRow(existing, rowData, method, kodeById, kkNameById);
         if (changes.length === 0) {
           result.skippedNoChange++;
           result.rows.push({ row: row.row, nim: row.nim, status: "SkippedNoChange" });
@@ -379,8 +400,8 @@ export async function commitSidangImport(
             nama: row.nama,
             prodi: row.prodi,
             judul: row.judul || null,
-            kelompokKeilmuan: row.kelompokKeilmuan || null,
             semester: row.semester || null,
+            kelompokKeahlianId: row.kelompokKeahlianId,
             pembimbing1Id: row.pembimbing1Id,
             pembimbing2Id: row.pembimbing2Id ?? null,
             ...(method === "full" ? { penguji1Id: row.penguji1Id ?? null, penguji2Id: row.penguji2Id ?? null } : {}),
@@ -400,6 +421,7 @@ export async function commitSidangImport(
             source: "PLOTTING_PENGUJI",
             nim: row.nim,
             nama: row.nama,
+            kelompokKeahlian: row.kelompokKeahlianNama,
             changes,
             message: changes.map((c) => `${c.field}: ${c.previous} → ${c.new}`).join("; "),
           },
@@ -413,8 +435,8 @@ export async function commitSidangImport(
             nama: row.nama,
             prodi: row.prodi,
             judul: row.judul || null,
-            kelompokKeilmuan: row.kelompokKeilmuan || null,
             semester: row.semester || null,
+            kelompokKeahlianId: row.kelompokKeahlianId,
             pembimbing1Id: row.pembimbing1Id,
             pembimbing2Id: row.pembimbing2Id ?? null,
             penguji1Id: method === "full" ? (row.penguji1Id ?? null) : null,

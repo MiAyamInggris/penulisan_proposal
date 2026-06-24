@@ -23,6 +23,7 @@ import { assignPengujiSidang, bulkAssignPengujiSidang } from "@/lib/actions/sida
 
 type DosenOption = { id: string; name: string; kodeDosen: string | null };
 type DosenRef = { id: string; name: string; kodeDosen: string | null } | null;
+type KKOption = { id: string; nama: string };
 
 type SidangRecordSerialized = {
   id: string;
@@ -30,7 +31,7 @@ type SidangRecordSerialized = {
   nama: string;
   prodi: ProdiCode;
   judul: string | null;
-  kelompokKeilmuan: string | null;
+  kelompokKeahlian: KKOption;
   semester: string | null;
   pembimbing1: DosenRef;
   pembimbing2: DosenRef;
@@ -55,8 +56,8 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
 
   const columns =
     method === "full"
-      ? ["NIM *", "Nama Mahasiswa *", "Program Studi *", "Judul", "Kode Pembimbing 1 *", "Kode Pembimbing 2", "Kode Penguji 1 *", "Kode Penguji 2 *", "Kelompok Keilmuan", "Semester"]
-      : ["NIM *", "Nama Mahasiswa *", "Program Studi *", "Judul", "Kode Pembimbing 1 *", "Kode Pembimbing 2", "Kelompok Keilmuan", "Semester"];
+      ? ["NIM *", "Nama Mahasiswa *", "Program Studi *", "Judul", "Kelompok Keahlian *", "Kode Pembimbing 1 *", "Kode Pembimbing 2", "Kode Penguji 1 *", "Kode Penguji 2 *", "Semester"]
+      : ["NIM *", "Nama Mahasiswa *", "Program Studi *", "Judul", "Kelompok Keahlian *", "Kode Pembimbing 1 *", "Kode Pembimbing 2", "Semester"];
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,6 +118,7 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
     if (!preview) return;
     const data = preview.rows.map((r) => ({
       Baris: r.row, NIM: r.nim, Nama: r.nama, Prodi: r.prodi ?? "",
+      "Kelompok Keahlian": r.kelompokKeahlianNama ?? r.kodeKelompokKeahlian,
       "Kode PBB 1": r.kodePembimbing1, "Kode PBB 2": r.kodePembimbing2,
       "Kode PGJ 1": r.kodePenguji1, "Kode PGJ 2": r.kodePenguji2,
       Semester: r.semester, Status: r.status, Keterangan: r.issues.join("; "),
@@ -212,6 +214,7 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
                     <th className="text-left py-1.5 pr-3 font-medium">Baris</th>
                     <th className="text-left py-1.5 pr-3 font-medium">NIM</th>
                     <th className="text-left py-1.5 pr-3 font-medium">Nama</th>
+                    <th className="text-left py-1.5 pr-3 font-medium">Kelompok Keahlian</th>
                     <th className="text-left py-1.5 pr-3 font-medium">PBB1</th>
                     <th className="text-left py-1.5 pr-3 font-medium">PBB2</th>
                     {method === "full" && <th className="text-left py-1.5 pr-3 font-medium">PGJ1</th>}
@@ -227,6 +230,7 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
                       <td className="py-1.5 pr-3 text-gray-500">{r.row}</td>
                       <td className="py-1.5 pr-3 font-mono text-gray-600">{r.nim}</td>
                       <td className="py-1.5 pr-3 text-gray-800">{r.nama}</td>
+                      <td className="py-1.5 pr-3 text-gray-600">{r.kelompokKeahlianNama ?? r.kodeKelompokKeahlian ?? "—"}</td>
                       <td className="py-1.5 pr-3 text-gray-600">{r.kodePembimbing1 || "—"}</td>
                       <td className="py-1.5 pr-3 text-gray-600">{r.kodePembimbing2 || "—"}</td>
                       {method === "full" && <td className="py-1.5 pr-3 text-gray-600">{r.kodePenguji1 || "—"}</td>}
@@ -338,21 +342,32 @@ function ImportTab() {
 
 // ─── Monitoring Tab ───────────────────────────────────────────────────────────
 
-function MonitoringTab({ records }: { records: SidangRecordSerialized[] }) {
+function MonitoringTab({
+  records,
+  dosenList,
+  kkList,
+}: {
+  records: SidangRecordSerialized[];
+  dosenList: DosenOption[];
+  kkList: KKOption[];
+}) {
   const [filterProdi, setFilterProdi] = useState("ALL");
   const [filterKK, setFilterKK] = useState("ALL");
   const [filterSemester, setFilterSemester] = useState("ALL");
+  const [filterPenguji, setFilterPenguji] = useState("ALL");
+  const [filterPembimbing, setFilterPembimbing] = useState("ALL");
   const [search, setSearch] = useState("");
 
-  const kkOptions = [...new Set(records.map((r) => r.kelompokKeilmuan).filter(Boolean))].sort() as string[];
   const semesterOptions = [...new Set(records.map((r) => r.semester).filter(Boolean))].sort() as string[];
 
   const searchLower = search.toLowerCase();
 
   const filtered = records.filter((r) => {
     if (filterProdi !== "ALL" && r.prodi !== filterProdi) return false;
-    if (filterKK !== "ALL" && r.kelompokKeilmuan !== filterKK) return false;
+    if (filterKK !== "ALL" && r.kelompokKeahlian.id !== filterKK) return false;
     if (filterSemester !== "ALL" && r.semester !== filterSemester) return false;
+    if (filterPenguji !== "ALL" && r.penguji1?.id !== filterPenguji && r.penguji2?.id !== filterPenguji) return false;
+    if (filterPembimbing !== "ALL" && r.pembimbing1?.id !== filterPembimbing && r.pembimbing2?.id !== filterPembimbing) return false;
     if (searchLower) {
       const haystack = [
         r.nim, r.nama,
@@ -370,11 +385,11 @@ function MonitoringTab({ records }: { records: SidangRecordSerialized[] }) {
     const data = filtered.map((r) => ({
       NIM: r.nim, Nama: r.nama, Prodi: r.prodi,
       Judul: r.judul ?? "",
+      "Kelompok Keahlian": r.kelompokKeahlian.nama,
       "Pembimbing 1": r.pembimbing1?.name ?? "—",
       "Pembimbing 2": r.pembimbing2?.name ?? "—",
       "Penguji 1": r.penguji1?.name ?? "—",
       "Penguji 2": r.penguji2?.name ?? "—",
-      "Kelompok Keilmuan": r.kelompokKeilmuan ?? "",
       Semester: r.semester ?? "",
       "Status Penguji": r.penguji1 && r.penguji2 ? "Lengkap" : "Belum Lengkap",
     }));
@@ -407,24 +422,38 @@ function MonitoringTab({ records }: { records: SidangRecordSerialized[] }) {
             {["RPL", "IF", "DS", "SI"].map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
-        {kkOptions.length > 0 && (
+        {kkList.length > 0 && (
           <Select value={filterKK} onValueChange={(v) => { if (v !== null) setFilterKK(v); }}>
-            <SelectTrigger className="w-44 h-8 text-sm"><SelectValue placeholder="Kelompok KK" /></SelectTrigger>
+            <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="Kelompok Keahlian" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Semua KK</SelectItem>
-              {kkOptions.map((kk) => <SelectItem key={kk} value={kk}>{kk}</SelectItem>)}
+              {kkList.map((kk) => <SelectItem key={kk.id} value={kk.id}>{kk.nama}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
         {semesterOptions.length > 0 && (
           <Select value={filterSemester} onValueChange={(v) => { if (v !== null) setFilterSemester(v); }}>
-            <SelectTrigger className="w-44 h-8 text-sm"><SelectValue placeholder="Semester" /></SelectTrigger>
+            <SelectTrigger className="w-40 h-8 text-sm"><SelectValue placeholder="Semester" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Semua Semester</SelectItem>
               {semesterOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
+        <Select value={filterPembimbing} onValueChange={(v) => { if (v !== null) setFilterPembimbing(v); }}>
+          <SelectTrigger className="w-44 h-8 text-sm"><SelectValue placeholder="Pembimbing" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Pembimbing</SelectItem>
+            {dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterPenguji} onValueChange={(v) => { if (v !== null) setFilterPenguji(v); }}>
+          <SelectTrigger className="w-44 h-8 text-sm"><SelectValue placeholder="Penguji" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Penguji</SelectItem>
+            {dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <span className="text-sm text-gray-500">{filtered.length} data</span>
         <Button type="button" variant="outline" size="sm" className="ml-auto" onClick={exportMonitoring}>
           <FileSpreadsheet className="mr-2 h-4 w-4" />Export Excel
@@ -446,6 +475,8 @@ function MonitoringTab({ records }: { records: SidangRecordSerialized[] }) {
                     <th className="text-left px-4 py-3 font-medium">NIM</th>
                     <th className="text-left px-4 py-3 font-medium">Nama</th>
                     <th className="text-left px-4 py-3 font-medium">Prodi</th>
+                    <th className="text-left px-4 py-3 font-medium">Judul</th>
+                    <th className="text-left px-4 py-3 font-medium">Kelompok Keahlian</th>
                     <th className="text-left px-4 py-3 font-medium">Pembimbing 1</th>
                     <th className="text-left px-4 py-3 font-medium">Pembimbing 2</th>
                     <th className="text-left px-4 py-3 font-medium">Penguji 1</th>
@@ -461,6 +492,8 @@ function MonitoringTab({ records }: { records: SidangRecordSerialized[] }) {
                         <td className="px-4 py-3 font-mono text-xs text-gray-600">{r.nim}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{r.nama}</td>
                         <td className="px-4 py-3"><Badge variant="outline" className="text-xs">{r.prodi}</Badge></td>
+                        <td className="px-4 py-3 text-gray-600 text-sm max-w-xs truncate" title={r.judul ?? ""}>{r.judul ?? "—"}</td>
+                        <td className="px-4 py-3 text-gray-600 text-sm">{r.kelompokKeahlian.nama}</td>
                         <td className="px-4 py-3 text-gray-600 text-sm">{r.pembimbing1?.name ?? "—"}</td>
                         <td className="px-4 py-3 text-gray-600 text-sm">{r.pembimbing2?.name ?? "—"}</td>
                         <td className="px-4 py-3 text-gray-600 text-sm">{r.penguji1?.name ?? <span className="italic text-gray-400">Belum</span>}</td>
@@ -653,9 +686,11 @@ type Tab = "import" | "monitoring" | "belum";
 export function PlottingPengujiClient({
   records,
   dosenList,
+  kkList,
 }: {
   records: SidangRecordSerialized[];
   dosenList: DosenOption[];
+  kkList: KKOption[];
 }) {
   const [tab, setTab] = useState<Tab>("import");
   const pendingCount = records.filter((r) => !r.penguji1 || !r.penguji2).length;
@@ -680,7 +715,7 @@ export function PlottingPengujiClient({
       </div>
 
       {tab === "import" && <ImportTab />}
-      {tab === "monitoring" && <MonitoringTab records={records} />}
+      {tab === "monitoring" && <MonitoringTab records={records} dosenList={dosenList} kkList={kkList} />}
       {tab === "belum" && <BelumPengujiTab records={records} dosenList={dosenList} />}
     </div>
   );

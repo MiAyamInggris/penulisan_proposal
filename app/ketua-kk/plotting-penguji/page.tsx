@@ -9,7 +9,7 @@ export default async function PlottingPengujiPage() {
     redirect("/ketua-kk/dashboard");
   }
 
-  const [records, dosenList] = await Promise.all([
+  const [records, dosenList, kkList] = await Promise.all([
     prisma.sidangRecord.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -17,12 +17,17 @@ export default async function PlottingPengujiPage() {
         pembimbing2: { select: { id: true, name: true, kodeDosen: true } },
         penguji1: { select: { id: true, name: true, kodeDosen: true } },
         penguji2: { select: { id: true, name: true, kodeDosen: true } },
+        kelompokKeahlian: { select: { id: true, nama: true } },
       },
     }),
     prisma.user.findMany({
       where: { role: "DOSEN", isActive: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, kodeDosen: true },
+    }),
+    prisma.kelompokKeahlian.findMany({
+      orderBy: { nama: "asc" },
+      select: { id: true, nama: true },
     }),
   ]);
 
@@ -32,7 +37,7 @@ export default async function PlottingPengujiPage() {
     nama: r.nama,
     prodi: r.prodi,
     judul: r.judul,
-    kelompokKeilmuan: r.kelompokKeilmuan,
+    kelompokKeahlian: { id: r.kelompokKeahlian.id, nama: r.kelompokKeahlian.nama },
     semester: r.semester,
     pembimbing1: r.pembimbing1 ? { id: r.pembimbing1.id, name: r.pembimbing1.name, kodeDosen: r.pembimbing1.kodeDosen } : null,
     pembimbing2: r.pembimbing2 ? { id: r.pembimbing2.id, name: r.pembimbing2.name, kodeDosen: r.pembimbing2.kodeDosen } : null,
@@ -49,7 +54,7 @@ export default async function PlottingPengujiPage() {
           Kelola penugasan pembimbing dan penguji untuk sidang akhir mahasiswa.
         </p>
       </div>
-      <PlottingPengujiClient records={serializedRecords} dosenList={dosenList} />
+      <PlottingPengujiClient records={serializedRecords} dosenList={dosenList} kkList={kkList} />
     </div>
   );
 }
