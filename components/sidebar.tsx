@@ -8,10 +8,18 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LogOut, Menu, X, ArrowLeftRight } from "lucide-react";
 
+interface NavChild {
+  href: string;
+  label: string;
+  badge?: number;
+}
+
 interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  badge?: number;
+  children?: NavChild[];
 }
 
 interface SidebarProps {
@@ -79,23 +87,62 @@ function SidebarContent({
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const isExact = pathname === item.href;
+          const isGroupActive = isExact || pathname.startsWith(item.href + "/");
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-[#C8102E] text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            <div key={item.href}>
+              <Link
+                href={item.href}
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isGroupActive
+                    ? "bg-[#C8102E] text-white"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                )}
+              >
+                {item.icon}
+                <span className="flex-1">{item.label}</span>
+                {!!item.badge && (
+                  <span
+                    className={cn(
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                      isGroupActive ? "bg-white/20 text-white" : "bg-[#C8102E] text-white"
+                    )}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+              {item.children && item.children.length > 0 && (
+                <div className="mt-1 ml-4 pl-3 border-l border-gray-200 space-y-0.5">
+                  {item.children.map((child) => {
+                    const isChildActive =
+                      pathname === child.href || pathname.startsWith(child.href + "/");
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={onNavigate}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                          isChildActive
+                            ? "bg-red-50 text-[#C8102E]"
+                            : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                        )}
+                      >
+                        <span className="flex-1">{child.label}</span>
+                        {!!child.badge && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#C8102E] text-white">
+                            {child.badge}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
+            </div>
           );
         })}
       </nav>

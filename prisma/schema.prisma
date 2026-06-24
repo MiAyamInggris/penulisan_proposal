@@ -70,6 +70,22 @@ enum NotificationType {
   PENGUJI_CROSS_KK_CHANGED
 }
 
+enum SidangWarningType {
+  EXISTING_PENGUJI_DIFFERENT
+  CROSS_KK_PENGUJI
+  DUPLICATE_EXAMINER
+  HIGH_WORKLOAD
+  OVERWRITE_EXISTING
+  UNRECOGNIZED_DOSEN_CODE
+}
+
+enum SidangWarningStatus {
+  PENDING
+  RESOLVED_CHANGED
+  RESOLVED_FORCED
+  IGNORED
+}
+
 // ─── Core Models ─────────────────────────────────────────────────────────────
 
 model User {
@@ -108,6 +124,9 @@ model User {
   sidangAsPenguji1    SidangRecord[] @relation("SidangPenguji1")
   sidangAsPenguji2    SidangRecord[] @relation("SidangPenguji2")
   sidangImports       SidangRecord[] @relation("SidangImportedBy")
+
+  sidangWarningsResolved SidangImportWarning[] @relation("WarningResolvedBy")
+  sidangWarningsImported SidangImportWarning[] @relation("WarningImportedBy")
 
   kelompokKeahlian KelompokKeahlian? @relation("KKAnggota", fields: [kelompokKeahlianId], references: [id])
   ketuaDiKK        KelompokKeahlian? @relation("KKKetua")
@@ -364,6 +383,7 @@ model KelompokKeahlian {
   ketua User?  @relation("KKKetua", fields: [ketuaId], references: [id])
   dosen User[] @relation("KKAnggota")
   sidangRecords SidangRecord[] @relation("SidangKelompokKeahlian")
+  sidangWarnings SidangImportWarning[] @relation("WarningKelompokKeahlian")
 }
 
 // ─── Audit Log ───────────────────────────────────────────────────────────────
@@ -407,6 +427,47 @@ model SidangRecord {
   importBatchId String?
   importedById  String
   importedBy    User    @relation("SidangImportedBy", fields: [importedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Sidang Import Warning (Data Warning & Confirmation queue) ────────────────
+
+model SidangImportWarning {
+  id            String    @id @default(cuid())
+  importBatchId String
+  row           Int
+  nim           String
+  nama          String
+  prodi         ProdiCode
+  judul         String?
+
+  kelompokKeahlianId String
+  kelompokKeahlian   KelompokKeahlian @relation("WarningKelompokKeahlian", fields: [kelompokKeahlianId], references: [id])
+
+  semester String?
+  method   String
+
+  pembimbing1Id      String?
+  pembimbing2Id      String?
+  importedPenguji1Id String?
+  importedPenguji2Id String?
+  existingPenguji1Id String?
+  existingPenguji2Id String?
+
+  existingSidangRecordId String?
+
+  warningType     SidangWarningType
+  warningMessages Json
+
+  status       SidangWarningStatus @default(PENDING)
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?               @relation("WarningResolvedBy", fields: [resolvedById], references: [id])
+
+  importedById String
+  importedBy   User   @relation("WarningImportedBy", fields: [importedById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

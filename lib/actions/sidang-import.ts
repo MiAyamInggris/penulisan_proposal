@@ -5,9 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { logAudit, type AssignmentChange } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
-import type { ProdiCode } from "@prisma/client";
+import type { ProdiCode, SidangWarningType } from "@prisma/client";
 
 export type SidangImportAction = "CREATE" | "UPDATE" | "SKIP_NO_CHANGE";
+
+const HIGH_WORKLOAD_THRESHOLD = 10;
 
 export type SidangPreviewRow = {
   row: number;
@@ -27,7 +29,11 @@ export type SidangPreviewRow = {
   pembimbing2Id: string | null;
   penguji1Id: string | null;
   penguji2Id: string | null;
+  existingPenguji1Id: string | null;
+  existingPenguji2Id: string | null;
+  existingSidangRecordId: string | null;
   status: "Valid" | "Invalid" | "Warning";
+  warningType: SidangWarningType | null;
   issues: string[];
   action: SidangImportAction;
   changes: AssignmentChange[];
@@ -44,7 +50,7 @@ export type SidangPreviewResult = {
   willSkipNoChange: number;
 };
 
-export type SidangCommitRowStatus = "Created" | "Updated" | "SkippedNoChange" | "SkippedInvalid" | "Failed";
+export type SidangCommitRowStatus = "Created" | "Updated" | "SkippedNoChange" | "SkippedInvalid" | "Failed" | "Queued";
 
 export type SidangCommitResult = {
   total: number;
@@ -53,6 +59,7 @@ export type SidangCommitResult = {
   skippedNoChange: number;
   skippedInvalid: number;
   failed: number;
+  warningQueued: number;
   importBatchId: string;
   rows: { row: number; nim: string; status: SidangCommitRowStatus; reason?: string }[];
 };
@@ -160,13 +167,13 @@ export async function previewSidangImport(
   // Pre-load all active dosen indexed by kodeDosen (lowercase), plus reverse id→kode lookup
   const allDosen = await prisma.user.findMany({
     where: { role: "DOSEN", isActive: true, kodeDosen: { not: null } },
-    select: { id: true, name: true, kodeDosen: true },
+    select: { id: true, name: true, kodeDosen: true, kelompokKeahlianId: true },
   });
-  const dosenByKode = new Map<string, { id: string; name: string }>();
+  const dosenByKode = new Map<string, { id: string; name: string; kelompokKeahlianId: string | null }>();
   const kodeById = new Map<string, string>();
   for (const d of allDosen) {
     if (d.kodeDosen) {
-      dosenByKode.set(d.kodeDosen.toLowerCase(), { id: d.id, name: d.name });
+      dosenByKode.set(d.kodeDosen.toLowerCase(), { id: d.id, name: d.name, kelompokKeahlianId: d.kelompokKeahlianId });
       kodeById.set(d.id, d.kodeDosen);
     }
   }
@@ -179,7 +186,7 @@ export async function previewSidangImport(
   // Pre-load existing SidangRecords for matching (NIM priority 1, Nama priority 2)
   const existingRecords = await prisma.sidangRecord.findMany({
     select: {
-      nim: true, nama: true, prodi: true, judul: true, semester: true, kelompokKeahlianId: true,
+      id: true, nim: true, nama: true, prodi: true, judul: true, semester: true, kelompokKeahlianId: true,
       pembimbing1Id: true, pembimbing2Id: true, penguji1Id: true, penguji2Id: true,
     },
   });
@@ -188,6 +195,16 @@ export async function previewSidangImport(
   for (const r of existingRecords) {
     existingByNama.set(r.nama.toLowerCase().trim(), r.nim);
   }
+
+  // Running workload tally (Pembimbing + Penguji slots) — seeded from existing data,
+  // incremented as rows within this same file assign the same dosen again.
+  const runningBeban = new Map<string, number>();
+  for (const r of existingRecords) {
+    for (const id of [r.pembimbing1Id, r.pembimbing2Id, r.penguji1Id, r.penguji2Id]) {
+      if (id) runningBeban.set(id, (runningBeban.get(id) ?? 0) + 1);
+    }
+  }
+  const bumpBeban = (id: string) => runningBeban.set(id, (runningBeban.get(id) ?? 0) + 1);
 
   for (let i = 0; i < sheetRows.length; i++) {
     const rowNum = i + 2;
@@ -204,6 +221,7 @@ export async function previewSidangImport(
     const kodePenguji1 = method === "full" ? String(row["Kode Penguji 1"] ?? "").trim() : "";
     const kodePenguji2 = method === "full" ? String(row["Kode Penguji 2"] ?? "").trim() : "";
 
+    // ── Hard validation (blocks the row entirely) ──────────────────────────
     const issues: string[] = [];
 
     if (!nim) issues.push("Kolom NIM wajib diisi");
@@ -219,7 +237,6 @@ export async function previewSidangImport(
 
     const prodi = VALID_PRODI.includes(prodiRaw as ProdiCode) ? (prodiRaw as ProdiCode) : null;
 
-    // Kelompok Keahlian is mandatory (spec 950-952)
     const kk = kodeKelompokKeahlian ? (kkByName.get(kodeKelompokKeahlian.toLowerCase()) ?? null) : null;
     if (!kodeKelompokKeahlian) {
       issues.push("Kolom Kelompok Keahlian wajib diisi");
@@ -227,43 +244,94 @@ export async function previewSidangImport(
       issues.push(`Kelompok Keahlian "${kodeKelompokKeahlian}" tidak ditemukan — gunakan nama KK yang sesuai`);
     }
 
-    // Resolve dosen codes
     const pembimbing1 = kodePembimbing1 ? (dosenByKode.get(kodePembimbing1.toLowerCase()) ?? null) : null;
     const pembimbing2 = kodePembimbing2 ? (dosenByKode.get(kodePembimbing2.toLowerCase()) ?? null) : null;
+    if (kodePembimbing1 && !pembimbing1) issues.push(`Kode Pembimbing 1 "${kodePembimbing1}" tidak ditemukan`);
+    if (kodePembimbing2 && !pembimbing2) issues.push(`Kode Pembimbing 2 "${kodePembimbing2}" tidak ditemukan`);
+
+    // ── Soft validation (Penguji code unresolved → Warning, not Invalid,
+    //    as long as mahasiswa/pembimbing core data above is otherwise fine) ──
+    const warningMsgs: string[] = [];
+    let warningType: SidangWarningType | null = null;
+    const setWarning = (type: SidangWarningType, msg: string) => {
+      warningMsgs.push(msg);
+      if (!warningType) warningType = type;
+    };
+
     const penguji1 = kodePenguji1 ? (dosenByKode.get(kodePenguji1.toLowerCase()) ?? null) : null;
     const penguji2 = kodePenguji2 ? (dosenByKode.get(kodePenguji2.toLowerCase()) ?? null) : null;
 
-    if (kodePembimbing1 && !pembimbing1) issues.push(`Kode Pembimbing 1 "${kodePembimbing1}" tidak ditemukan`);
-    if (kodePembimbing2 && !pembimbing2) issues.push(`Kode Pembimbing 2 "${kodePembimbing2}" tidak ditemukan`);
-    if (kodePenguji1 && !penguji1) issues.push(`Kode Penguji 1 "${kodePenguji1}" tidak ditemukan`);
-    if (kodePenguji2 && !penguji2) issues.push(`Kode Penguji 2 "${kodePenguji2}" tidak ditemukan`);
+    if (kodePenguji1 && !penguji1) setWarning("UNRECOGNIZED_DOSEN_CODE", `Kode Penguji 1 "${kodePenguji1}" tidak ditemukan — pilih penguji secara manual`);
+    if (kodePenguji2 && !penguji2) setWarning("UNRECOGNIZED_DOSEN_CODE", `Kode Penguji 2 "${kodePenguji2}" tidak ditemukan — pilih penguji secara manual`);
 
-    const warnings: string[] = [];
-
-    if (method === "full" && penguji1 && penguji2) {
-      if (penguji1.id === penguji2.id) {
-        issues.push("Penguji 1 dan Penguji 2 tidak boleh sama");
-      }
-      const pembimbingIds = new Set([pembimbing1?.id, pembimbing2?.id].filter(Boolean));
-      if (pembimbingIds.has(penguji1.id)) warnings.push(`Penguji 1 (${kodePenguji1}) juga merupakan pembimbing`);
-      if (pembimbingIds.has(penguji2.id)) warnings.push(`Penguji 2 (${kodePenguji2}) juga merupakan pembimbing`);
+    if (method === "full" && penguji1 && penguji2 && penguji1.id === penguji2.id) {
+      issues.push("Penguji 1 dan Penguji 2 tidak boleh sama");
     }
 
-    // Mahasiswa matching: Priority 1 = NIM, Priority 2 = Nama (exact match, different NIM → warn)
+    // Mahasiswa matching: Priority 1 = NIM, Priority 2 = Nama (informational only)
     const existing = nim ? existingByNim.get(nim.toLowerCase()) : undefined;
     if (!existing && nim && nama) {
       const nameMatchNim = existingByNama.get(nama.toLowerCase().trim());
       if (nameMatchNim && nameMatchNim.toLowerCase() !== nim.toLowerCase()) {
-        warnings.push(`Nama "${nama}" cocok dengan data lain bernama sama dengan NIM berbeda (${nameMatchNim}) — periksa kemungkinan duplikat/kesalahan NIM`);
+        warningMsgs.push(`Nama "${nama}" cocok dengan data lain bernama sama dengan NIM berbeda (${nameMatchNim}) — periksa kemungkinan duplikat/kesalahan NIM`);
       }
     }
 
-    const allIssues = [...issues, ...warnings];
+    if (issues.length === 0 && kk) {
+      const pembimbingIds = new Set([pembimbing1?.id, pembimbing2?.id].filter(Boolean));
+
+      // Penguji juga merupakan pembimbing → conflict, treated as duplicate involvement
+      if (penguji1 && pembimbingIds.has(penguji1.id)) setWarning("DUPLICATE_EXAMINER", `Penguji 1 (${penguji1.name}) juga merupakan pembimbing mahasiswa ini`);
+      if (penguji2 && pembimbingIds.has(penguji2.id)) setWarning("DUPLICATE_EXAMINER", `Penguji 2 (${penguji2.name}) juga merupakan pembimbing mahasiswa ini`);
+
+      if (existing) {
+        // Existing assignment would be overwritten with a different penguji
+        if (penguji1 && existing.penguji1Id && existing.penguji1Id !== penguji1.id) {
+          const prevName = kodeById.get(existing.penguji1Id) ?? existing.penguji1Id;
+          setWarning("EXISTING_PENGUJI_DIFFERENT", `Penguji 1 sudah ada (${prevName}) dan akan diganti dengan ${penguji1.name}`);
+        }
+        if (penguji2 && existing.penguji2Id && existing.penguji2Id !== penguji2.id) {
+          const prevName = kodeById.get(existing.penguji2Id) ?? existing.penguji2Id;
+          setWarning("EXISTING_PENGUJI_DIFFERENT", `Penguji 2 sudah ada (${prevName}) dan akan diganti dengan ${penguji2.name}`);
+        }
+        // Cross-slot duplicate: imported penguji matches the OTHER existing slot
+        if (penguji1 && existing.penguji2Id === penguji1.id) {
+          setWarning("DUPLICATE_EXAMINER", `${penguji1.name} sudah tercatat sebagai Penguji 2 — kemungkinan duplikat/tertukar slot`);
+        }
+        if (penguji2 && existing.penguji1Id === penguji2.id) {
+          setWarning("DUPLICATE_EXAMINER", `${penguji2.name} sudah tercatat sebagai Penguji 1 — kemungkinan duplikat/tertukar slot`);
+        }
+      }
+
+      // Cross-KK penguji
+      if (penguji1 && penguji1.kelompokKeahlianId && penguji1.kelompokKeahlianId !== kk.id) {
+        setWarning("CROSS_KK_PENGUJI", `Penguji 1 (${penguji1.name}) berasal dari KK lain`);
+      }
+      if (penguji2 && penguji2.kelompokKeahlianId && penguji2.kelompokKeahlianId !== kk.id) {
+        setWarning("CROSS_KK_PENGUJI", `Penguji 2 (${penguji2.name}) berasal dari KK lain`);
+      }
+
+      // High workload
+      if (penguji1) {
+        const projected = (runningBeban.get(penguji1.id) ?? 0) + 1;
+        if (projected > HIGH_WORKLOAD_THRESHOLD) setWarning("HIGH_WORKLOAD", `Beban dosen ${penguji1.name} akan mencapai ${projected} (di atas ambang ${HIGH_WORKLOAD_THRESHOLD})`);
+        bumpBeban(penguji1.id);
+      }
+      if (penguji2) {
+        const projected = (runningBeban.get(penguji2.id) ?? 0) + 1;
+        if (projected > HIGH_WORKLOAD_THRESHOLD) setWarning("HIGH_WORKLOAD", `Beban dosen ${penguji2.name} akan mencapai ${projected} (di atas ambang ${HIGH_WORKLOAD_THRESHOLD})`);
+        bumpBeban(penguji2.id);
+      }
+      if (pembimbing1) bumpBeban(pembimbing1.id);
+      if (pembimbing2) bumpBeban(pembimbing2.id);
+    }
+
+    const allIssues = [...issues, ...warningMsgs];
     let status: "Valid" | "Invalid" | "Warning";
     if (issues.length > 0) {
       status = "Invalid";
       result.invalid++;
-    } else if (warnings.length > 0) {
+    } else if (warningType) {
       status = "Warning";
       result.warnings++;
     } else {
@@ -293,9 +361,11 @@ export async function previewSidangImport(
         action = "CREATE";
       }
 
-      if (action === "CREATE") result.willCreate++;
-      else if (action === "UPDATE") result.willUpdate++;
-      else result.willSkipNoChange++;
+      if (status !== "Warning") {
+        if (action === "CREATE") result.willCreate++;
+        else if (action === "UPDATE") result.willUpdate++;
+        else result.willSkipNoChange++;
+      }
     }
 
     result.rows.push({
@@ -316,7 +386,11 @@ export async function previewSidangImport(
       pembimbing2Id: pembimbing2?.id ?? null,
       penguji1Id: penguji1?.id ?? null,
       penguji2Id: penguji2?.id ?? null,
+      existingPenguji1Id: existing?.penguji1Id ?? null,
+      existingPenguji2Id: existing?.penguji2Id ?? null,
+      existingSidangRecordId: existing?.id ?? null,
       status,
+      warningType,
       issues: allIssues,
       action,
       changes,
@@ -341,6 +415,7 @@ export async function commitSidangImport(
     skippedNoChange: 0,
     skippedInvalid: 0,
     failed: 0,
+    warningQueued: 0,
     importBatchId,
     rows: [],
   };
@@ -363,6 +438,44 @@ export async function commitSidangImport(
     if (!row.prodi || !row.pembimbing1Id || !row.kelompokKeahlianId) {
       result.skippedInvalid++;
       result.rows.push({ row: row.row, nim: row.nim, status: "SkippedInvalid", reason: "Data tidak lengkap" });
+      continue;
+    }
+
+    // Warning rows are diverted to the Data Warning & Confirmation queue —
+    // never written directly to SidangRecord (spec 1010-1012, 1049-1051).
+    if (row.status === "Warning") {
+      try {
+        await prisma.sidangImportWarning.create({
+          data: {
+            importBatchId,
+            row: row.row,
+            nim: row.nim,
+            nama: row.nama,
+            prodi: row.prodi,
+            judul: row.judul || null,
+            kelompokKeahlianId: row.kelompokKeahlianId,
+            semester: row.semester || null,
+            method,
+            pembimbing1Id: row.pembimbing1Id,
+            pembimbing2Id: row.pembimbing2Id ?? null,
+            importedPenguji1Id: row.penguji1Id ?? null,
+            importedPenguji2Id: row.penguji2Id ?? null,
+            existingPenguji1Id: row.existingPenguji1Id ?? null,
+            existingPenguji2Id: row.existingPenguji2Id ?? null,
+            existingSidangRecordId: row.existingSidangRecordId ?? null,
+            warningType: row.warningType!,
+            warningMessages: row.issues,
+            importedById: session.user.id,
+          },
+        });
+
+        result.warningQueued++;
+        result.rows.push({ row: row.row, nim: row.nim, status: "Queued", reason: row.issues.join("; ") });
+      } catch (err: unknown) {
+        result.failed++;
+        const msg = err instanceof Error ? err.message : "Gagal memproses data";
+        result.rows.push({ row: row.row, nim: row.nim, status: "Failed", reason: msg });
+      }
       continue;
     }
 
@@ -468,14 +581,16 @@ export async function commitSidangImport(
       skippedNoChange: result.skippedNoChange,
       skippedInvalid: result.skippedInvalid,
       failed: result.failed,
+      warningQueued: result.warningQueued,
       importBatchId,
-      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} imported ${result.created} new and updated ${result.updated} sidang records via Metode ${method === "full" ? "1" : "2"}.`,
+      message: `${auditRole === "ADMIN" ? "Admin" : "Ketua KK"} imported ${result.created} new and updated ${result.updated} sidang records via Metode ${method === "full" ? "1" : "2"}; ${result.warningQueued} dikirim ke Data Warning & Confirmation.`,
     },
     "SIDANG_RECORD"
   );
 
   revalidatePath("/ketua-kk/plotting-penguji");
   revalidatePath("/ketua-kk/plotting-penguji/beban-dosen");
+  revalidatePath("/ketua-kk/plotting-penguji/data-warning");
   revalidatePath("/admin/audit-log");
 
   return result;

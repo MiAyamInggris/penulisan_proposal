@@ -142,8 +142,10 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
       const res = await commitSidangImport(importableRows, method);
       setCommitResult(res);
       const saved = res.created + res.updated;
-      if (saved > 0) {
-        toast.success(`${res.created} data baru, ${res.updated} diperbarui, ${res.skippedNoChange} tidak berubah`);
+      if (saved > 0 || res.warningQueued > 0) {
+        let msg = `${res.created} data baru, ${res.updated} diperbarui`;
+        if (res.warningQueued > 0) msg += `, ${res.warningQueued} dikirim ke Data Warning & Confirmation`;
+        toast.success(msg);
       } else if (res.skippedNoChange > 0) {
         toast.info(`Semua ${res.skippedNoChange} data sudah sesuai — tidak ada perubahan`);
       } else {
@@ -288,7 +290,11 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
                         </Badge>
                       </td>
                       <td className="py-1.5 pr-3">
-                        {r.status !== "Invalid" && (
+                        {r.status === "Warning" ? (
+                          <Badge variant="outline" className="border-amber-300 text-amber-700">
+                            Perlu Konfirmasi
+                          </Badge>
+                        ) : r.status !== "Invalid" && (
                           <Badge variant="outline" className={
                             r.action === "CREATE" ? "border-green-300 text-green-700"
                               : r.action === "UPDATE" ? "border-blue-300 text-blue-700"
@@ -312,7 +318,8 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
 
             <div className="flex items-center justify-between gap-4">
               <p className="text-xs text-gray-400">
-                Baris <strong>Valid</strong> dan <strong>Peringatan</strong> akan diproses. Baris <strong>Invalid</strong> dilewati.
+                Baris <strong>Valid</strong> akan langsung diproses. Baris <strong>Peringatan</strong> akan dikirim ke{" "}
+                <strong>Data Warning &amp; Confirmation</strong> untuk ditinjau. Baris <strong>Invalid</strong> dilewati.
               </p>
               <Button type="button" onClick={handleConfirm} disabled={committing || importableCount === 0} className="bg-[#C8102E] hover:bg-[#a50d26] shrink-0">
                 {committing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -327,12 +334,13 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
         <Card>
           <CardHeader><CardTitle className="text-base">Hasil Import</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {[
                 { label: "Total", value: commitResult.total, cls: "bg-gray-50 text-gray-900" },
                 { label: "Baru", value: commitResult.created, cls: "bg-green-50 text-green-700" },
                 { label: "Diperbarui", value: commitResult.updated, cls: "bg-blue-50 text-blue-700" },
                 { label: "Tidak Berubah", value: commitResult.skippedNoChange, cls: "bg-gray-50 text-gray-500" },
+                { label: "Dikirim ke Warning", value: commitResult.warningQueued, cls: "bg-amber-50 text-amber-700" },
                 { label: "Gagal", value: commitResult.failed, cls: "bg-red-50 text-red-700" },
               ].map((s) => (
                 <div key={s.label} className={`text-center rounded-lg p-3 ${s.cls.split(" ")[0]}`}>
@@ -341,6 +349,12 @@ function ImportSubTab({ method }: { method: "full" | "semi" }) {
                 </div>
               ))}
             </div>
+            {commitResult.warningQueued > 0 && (
+              <div className="flex items-center gap-2 text-sm text-amber-700">
+                <AlertTriangle className="h-4 w-4" />
+                {commitResult.warningQueued} data memerlukan konfirmasi — tinjau di tab Data Warning &amp; Confirmation.
+              </div>
+            )}
             {commitResult.created + commitResult.updated > 0 && commitResult.failed === 0 && (
               <div className="flex items-center gap-2 text-sm text-green-700">
                 <CheckCircle2 className="h-4 w-4" />

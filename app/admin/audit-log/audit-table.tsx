@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, X, AlertTriangle, CheckCircle2, Loader2, RefreshCw, ArrowLeftRight } from "lucide-react";
+import { Search, X, AlertTriangle, CheckCircle2, Loader2, RefreshCw, ArrowLeftRight, Zap, EyeOff } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -68,6 +68,8 @@ const ACTION_LABELS: Record<string, string> = {
   REASSIGN_PENGUJI_SIDANG: "Ubah Penguji",
   ASSIGNMENT_UPDATED: "Assignment Updated",
   CROSS_KK_EXAMINER_ASSIGNMENT: "Cross-KK Examiner Assignment",
+  FORCE_INSERT_PENGUJI: "Force Insert Penguji",
+  IGNORE_SIDANG_WARNING: "Ignore Data Warning",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -85,12 +87,16 @@ const ACTION_COLORS: Record<string, string> = {
   REASSIGN_PENGUJI_SIDANG: "bg-amber-100 text-amber-800",
   ASSIGNMENT_UPDATED: "bg-orange-100 text-orange-800",
   CROSS_KK_EXAMINER_ASSIGNMENT: "bg-fuchsia-100 text-fuchsia-800",
+  FORCE_INSERT_PENGUJI: "bg-yellow-100 text-yellow-800",
+  IGNORE_SIDANG_WARNING: "bg-gray-100 text-gray-700",
 };
 
 const ACTION_ICONS: Partial<Record<string, typeof RefreshCw>> = {
   ASSIGNMENT_UPDATED: RefreshCw,
   REASSIGN_PENGUJI_SIDANG: RefreshCw,
   CROSS_KK_EXAMINER_ASSIGNMENT: ArrowLeftRight,
+  FORCE_INSERT_PENGUJI: Zap,
+  IGNORE_SIDANG_WARNING: EyeOff,
 };
 
 type AssignmentChange = { field: string; previous: string; new: string };
