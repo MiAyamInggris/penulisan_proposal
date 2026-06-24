@@ -6,13 +6,21 @@ import { Button } from "@/components/ui/button";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/actions/notifications";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import type { NotificationType } from "@prisma/client";
 
 type Notif = {
   id: string;
+  type: NotificationType;
   title: string;
   message: string;
   isRead: boolean;
   createdAt: Date;
+};
+
+const CROSS_KK_CATEGORY: Partial<Record<NotificationType, { label: string; color: string }>> = {
+  PENGUJI_CROSS_KK_NEW: { label: "Penguji Baru", color: "bg-green-100 text-green-700" },
+  PENGUJI_CROSS_KK_REMOVED: { label: "Penguji Dihapus", color: "bg-red-100 text-red-700" },
+  PENGUJI_CROSS_KK_CHANGED: { label: "Penguji Diganti", color: "bg-amber-100 text-amber-700" },
 };
 
 export function NotificationBell({
@@ -92,13 +100,20 @@ export function NotificationBell({
                     !n.isRead ? "bg-blue-50" : ""
                   }`}
                 >
-                  <p
-                    className={`text-sm font-medium ${
-                      !n.isRead ? "text-gray-900" : "text-gray-600"
-                    }`}
-                  >
-                    {n.title}
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p
+                      className={`text-sm font-medium ${
+                        !n.isRead ? "text-gray-900" : "text-gray-600"
+                      }`}
+                    >
+                      {n.title}
+                    </p>
+                    {CROSS_KK_CATEGORY[n.type] && (
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${CROSS_KK_CATEGORY[n.type]!.color}`}>
+                        {CROSS_KK_CATEGORY[n.type]!.label}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
                     {n.message}
                   </p>

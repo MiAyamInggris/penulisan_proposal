@@ -20,24 +20,39 @@ interface SidebarProps {
   userName: string;
   role: string;
   showRoleSwitch?: boolean;
+  headerExtra?: React.ReactNode;
 }
 
-export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }: SidebarProps) {
-  const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Administrator",
+  DOSEN: "Dosen",
+  MAHASISWA: "Mahasiswa",
+  "Dosen Pengampu": "Dosen Pengampu",
+  Pembimbing: "Pembimbing",
+  "Ketua Kelompok Keahlian": "Ketua Kelompok Keahlian",
+  Kaprodi: "Kepala Program Studi",
+};
 
-  const roleLabels: Record<string, string> = {
-    ADMIN: "Administrator",
-    DOSEN: "Dosen",
-    MAHASISWA: "Mahasiswa",
-    "Dosen Pengampu": "Dosen Pengampu",
-    Pembimbing: "Pembimbing",
-    "Ketua Kelompok Keahlian": "Ketua Kelompok Keahlian",
-    Kaprodi: "Kepala Program Studi",
-  };
-
-  const SidebarContent = () => (
+function SidebarContent({
+  navItems,
+  userEmail,
+  userName,
+  role,
+  showRoleSwitch,
+  headerExtra,
+  pathname,
+  loggingOut,
+  onNavigate,
+  onCloseMobile,
+  onLogout,
+}: SidebarProps & {
+  pathname: string;
+  loggingOut: boolean;
+  onNavigate: () => void;
+  onCloseMobile: () => void;
+  onLogout: () => void;
+}) {
+  return (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100">
@@ -50,12 +65,15 @@ export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }:
           </p>
           <p className="text-xs text-gray-500 truncate">Tel-U Purwokerto</p>
         </div>
-        <button
-          className="ml-auto md:hidden text-gray-400 hover:text-gray-600"
-          onClick={() => setMobileOpen(false)}
-        >
-          <X className="h-5 w-5" />
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          {headerExtra}
+          <button
+            className="md:hidden text-gray-400 hover:text-gray-600"
+            onClick={onCloseMobile}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -67,7 +85,7 @@ export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }:
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileOpen(false)}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 isActive
@@ -88,7 +106,7 @@ export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }:
           <p className="text-sm font-medium text-gray-900 truncate">{userName}</p>
           <p className="text-xs text-gray-500 truncate">{userEmail}</p>
           <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-            {roleLabels[role] ?? role}
+            {ROLE_LABELS[role] ?? role}
           </span>
         </div>
         {showRoleSwitch && (
@@ -105,10 +123,7 @@ export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }:
           size="sm"
           className="w-full justify-start text-gray-600 hover:text-red-600 hover:bg-red-50"
           loading={loggingOut}
-          onClick={() => {
-            setLoggingOut(true);
-            signOut({ callbackUrl: "/login" });
-          }}
+          onClick={onLogout}
         >
           {!loggingOut && <LogOut className="mr-2 h-4 w-4" />}
           {loggingOut ? "Keluar..." : "Keluar"}
@@ -116,12 +131,39 @@ export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }:
       </div>
     </div>
   );
+}
+
+export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch, headerExtra }: SidebarProps) {
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = () => {
+    setLoggingOut(true);
+    signOut({ callbackUrl: "/login" });
+  };
+
+  const sharedProps = {
+    navItems,
+    userEmail,
+    userName,
+    role,
+    showRoleSwitch,
+    headerExtra,
+    pathname,
+    loggingOut,
+    onLogout: handleLogout,
+  };
 
   return (
     <>
       {/* Desktop sidebar */}
       <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 h-full">
-        <SidebarContent />
+        <SidebarContent
+          {...sharedProps}
+          onNavigate={() => setMobileOpen(false)}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
       </div>
 
       {/* Mobile: top bar with hamburger */}
@@ -138,6 +180,7 @@ export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }:
           </div>
           <p className="text-sm font-semibold text-gray-900">Proposal TA</p>
         </div>
+        <div className="ml-auto">{headerExtra}</div>
       </div>
 
       {/* Mobile: slide-in drawer */}
@@ -148,7 +191,11 @@ export function Sidebar({ navItems, userEmail, userName, role, showRoleSwitch }:
             onClick={() => setMobileOpen(false)}
           />
           <div className="relative w-72 bg-white h-full shadow-xl">
-            <SidebarContent />
+            <SidebarContent
+              {...sharedProps}
+              onNavigate={() => setMobileOpen(false)}
+              onCloseMobile={() => setMobileOpen(false)}
+            />
           </div>
         </div>
       )}

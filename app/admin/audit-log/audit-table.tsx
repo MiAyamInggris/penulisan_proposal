@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, X, AlertTriangle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { Search, X, AlertTriangle, CheckCircle2, Loader2, RefreshCw, ArrowLeftRight } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,6 +67,7 @@ const ACTION_LABELS: Record<string, string> = {
   ASSIGN_PENGUJI_SIDANG: "Tugaskan Penguji",
   REASSIGN_PENGUJI_SIDANG: "Ubah Penguji",
   ASSIGNMENT_UPDATED: "Assignment Updated",
+  CROSS_KK_EXAMINER_ASSIGNMENT: "Cross-KK Examiner Assignment",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -83,11 +84,13 @@ const ACTION_COLORS: Record<string, string> = {
   ASSIGN_PENGUJI_SIDANG: "bg-rose-50 text-rose-700",
   REASSIGN_PENGUJI_SIDANG: "bg-amber-100 text-amber-800",
   ASSIGNMENT_UPDATED: "bg-orange-100 text-orange-800",
+  CROSS_KK_EXAMINER_ASSIGNMENT: "bg-fuchsia-100 text-fuchsia-800",
 };
 
 const ACTION_ICONS: Partial<Record<string, typeof RefreshCw>> = {
   ASSIGNMENT_UPDATED: RefreshCw,
   REASSIGN_PENGUJI_SIDANG: RefreshCw,
+  CROSS_KK_EXAMINER_ASSIGNMENT: ArrowLeftRight,
 };
 
 type AssignmentChange = { field: string; previous: string; new: string };

@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
+import { NotificationBell } from "@/components/shared/NotificationBell";
+import { getMyNotifications } from "@/lib/actions/notifications";
 import { LayoutDashboard, Users, Sliders, Settings, Upload, UserX, GraduationCap, Shield } from "lucide-react";
 
 const navItems = [
@@ -62,6 +64,8 @@ export default async function KetuaKKLayout({
     redirect("/dosen-kelas/dashboard");
   }
 
+  const notifications = await getMyNotifications(session.user.id);
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
@@ -70,6 +74,7 @@ export default async function KetuaKKLayout({
         userName={session.user.name}
         role="Ketua Kelompok Keahlian"
         showRoleSwitch
+        headerExtra={<NotificationBell userId={session.user.id} initialNotifications={notifications} />}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 pt-14 md:pt-0">
         <div className="p-6">{children}</div>

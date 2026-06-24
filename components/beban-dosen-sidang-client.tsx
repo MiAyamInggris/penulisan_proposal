@@ -126,6 +126,9 @@ function KKGroupList({
             <span className="flex items-center gap-1.5 text-gray-700">
               {expanded.has(kk.kkId) ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               {kk.kkNama}
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${kk.isInternal ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+                {kk.isInternal ? "Internal" : "Lintas KK"}
+              </span>
             </span>
             <span className="font-semibold text-gray-900">{kk.count}</span>
           </button>
@@ -175,12 +178,17 @@ function DetailBebanDialog({ row, onClose }: { row: BebanDosenRow; onClose: () =
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm">
+        <div className="flex flex-wrap gap-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm">
           <span className="text-gray-500">Pembimbing: <strong className="text-indigo-700">{row.jumlahPembimbing}</strong></span>
           <span className="text-gray-300">|</span>
           <span className="text-gray-500">Penguji: <strong className="text-rose-700">{row.jumlahPenguji}</strong></span>
           <span className="text-gray-300">|</span>
           <span className="text-gray-500">Total: <strong className="text-gray-900">{row.totalBeban}</strong></span>
+          <span className="text-gray-300">|</span>
+          <span className="text-gray-500">
+            Penguji Internal: <strong className="text-blue-700">{row.pengujiInternalCount}</strong>
+            {" · "}Lintas KK: <strong className="text-amber-700">{row.pengujiCrossKKCount}</strong>
+          </span>
         </div>
 
         <div>
@@ -233,12 +241,14 @@ export function BebanDosenSidangClient({ rows }: { rows: BebanDosenRow[] }) {
       "Jumlah Pembimbing": r.jumlahPembimbing,
       "Jumlah Penguji": r.jumlahPenguji,
       "Total Beban Sidang": r.totalBeban,
+      "Penguji Internal KK": r.pengujiInternalCount,
+      "Penguji Lintas KK": r.pengujiCrossKKCount,
       "Penguji per KK": r.pengujiByKK.map((k) => `${k.kkNama} (${k.count})`).join("; "),
       "Pembimbing per KK": r.pembimbingByKK.map((k) => `${k.kkNama} (${k.count})`).join("; "),
       Indikator: LOAD_CONFIG[getLoadStatus(r.totalBeban)].label,
     }));
     const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = [{ wch: 14 }, { wch: 30 }, { wch: 26 }, { wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 40 }, { wch: 40 }, { wch: 12 }];
+    ws["!cols"] = [{ wch: 14 }, { wch: 30 }, { wch: 26 }, { wch: 20 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 40 }, { wch: 40 }, { wch: 12 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Beban Dosen Penguji");
     XLSX.writeFile(wb, `beban-dosen-penguji-${Date.now()}.xlsx`);
@@ -315,6 +325,10 @@ export function BebanDosenSidangClient({ rows }: { rows: BebanDosenRow[] }) {
                     <span className="block text-[10px] font-normal text-gray-400">(PGJ I + II)</span>
                   </th>
                   <th className="text-center px-4 py-3 font-medium">KK Asal Penguji</th>
+                  <th className="text-center px-4 py-3 font-medium">
+                    Internal / Lintas KK
+                    <span className="block text-[10px] font-normal text-gray-400">(Penguji)</span>
+                  </th>
                   <th className="text-center px-4 py-3 font-medium">Total Beban Sidang</th>
                   <th className="text-center px-4 py-3 font-medium">Indikator</th>
                   <th className="text-center px-4 py-3 font-medium">Detail</th>
@@ -341,6 +355,11 @@ export function BebanDosenSidangClient({ rows }: { rows: BebanDosenRow[] }) {
                       </td>
                       <td className="px-4 py-3">
                         <KKMiniBadges items={d.pengujiByKK} colorCls="bg-rose-50 text-rose-700" />
+                      </td>
+                      <td className="px-4 py-3 text-center text-xs">
+                        <span className="text-blue-700 font-semibold">{d.pengujiInternalCount}</span>
+                        <span className="text-gray-300"> / </span>
+                        <span className="text-amber-700 font-semibold">{d.pengujiCrossKKCount}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex flex-col items-center gap-1">

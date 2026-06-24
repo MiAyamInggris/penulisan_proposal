@@ -14,6 +14,7 @@ export type KKBreakdownItem = {
   kkId: string;
   kkNama: string;
   count: number;
+  isInternal: boolean;
   students: KKStudentItem[];
 };
 
@@ -21,10 +22,15 @@ export type BebanDosenRow = {
   id: string;
   name: string;
   kodeDosen: string | null;
+  kelompokKeahlianId: string | null;
   kelompokKeahlian: string | null;
   jumlahPembimbing: number;
   jumlahPenguji: number;
   totalBeban: number;
+  pengujiInternalCount: number;
+  pengujiCrossKKCount: number;
+  pembimbingInternalCount: number;
+  pembimbingCrossKKCount: number;
   pembimbingByKK: KKBreakdownItem[];
   pengujiByKK: KKBreakdownItem[];
 };
@@ -82,6 +88,7 @@ export default async function BebanDosenPage() {
       id: true,
       name: true,
       kodeDosen: true,
+      kelompokKeahlianId: true,
       kelompokKeahlian: { select: { nama: true } },
     },
     orderBy: { name: "asc" },
@@ -110,26 +117,33 @@ export default async function BebanDosenPage() {
     if (r.penguji2Id) addToBreakdown(pengujiByDosen, r.penguji2Id, kkId, kkNama, student);
   }
 
-  const toBreakdownArray = (kkMap: KKAccum | undefined): KKBreakdownItem[] => {
+  const toBreakdownArray = (kkMap: KKAccum | undefined, ownKKId: string | null): KKBreakdownItem[] => {
     if (!kkMap) return [];
     return [...kkMap.entries()]
-      .map(([kkId, v]) => ({ kkId, kkNama: v.kkNama, count: v.students.length, students: v.students }))
+      .map(([kkId, v]) => ({ kkId, kkNama: v.kkNama, count: v.students.length, isInternal: kkId === ownKKId, students: v.students }))
       .sort((a, b) => b.count - a.count);
   };
 
   const rows: BebanDosenRow[] = dosenList.map((d) => {
-    const pembimbingByKK = toBreakdownArray(pembimbingByDosen.get(d.id));
-    const pengujiByKK = toBreakdownArray(pengujiByDosen.get(d.id));
+    const pembimbingByKK = toBreakdownArray(pembimbingByDosen.get(d.id), d.kelompokKeahlianId);
+    const pengujiByKK = toBreakdownArray(pengujiByDosen.get(d.id), d.kelompokKeahlianId);
     const jumlahPembimbing = pembimbingByKK.reduce((a, k) => a + k.count, 0);
     const jumlahPenguji = pengujiByKK.reduce((a, k) => a + k.count, 0);
+    const pengujiInternalCount = pengujiByKK.filter((k) => k.isInternal).reduce((a, k) => a + k.count, 0);
+    const pembimbingInternalCount = pembimbingByKK.filter((k) => k.isInternal).reduce((a, k) => a + k.count, 0);
     return {
       id: d.id,
       name: d.name,
       kodeDosen: d.kodeDosen,
+      kelompokKeahlianId: d.kelompokKeahlianId,
       kelompokKeahlian: d.kelompokKeahlian?.nama ?? null,
       jumlahPembimbing,
       jumlahPenguji,
       totalBeban: jumlahPembimbing + jumlahPenguji,
+      pengujiInternalCount,
+      pengujiCrossKKCount: jumlahPenguji - pengujiInternalCount,
+      pembimbingInternalCount,
+      pembimbingCrossKKCount: jumlahPembimbing - pembimbingInternalCount,
       pembimbingByKK,
       pengujiByKK,
     };

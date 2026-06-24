@@ -1,14 +1,23 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertTriangle, CheckCircle2, Download, FileSpreadsheet,
-  Loader2, Upload, UserCheck, AlertCircle, ClipboardList, Search,
+  Loader2, Upload, UserCheck, AlertCircle, ClipboardList, Search, Pencil, Eye,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import type { ProdiCode } from "@prisma/client";
@@ -21,9 +30,43 @@ import {
 } from "@/lib/actions/sidang-import";
 import { assignPengujiSidang, bulkAssignPengujiSidang } from "@/lib/actions/sidang-assign";
 
-type DosenOption = { id: string; name: string; kodeDosen: string | null };
+type DosenOption = {
+  id: string;
+  name: string;
+  kodeDosen: string | null;
+  kelompokKeahlianId: string | null;
+  kelompokKeahlianNama: string | null;
+  bebanPembimbing: number;
+  bebanPenguji: number;
+};
 type DosenRef = { id: string; name: string; kodeDosen: string | null } | null;
 type KKOption = { id: string; nama: string };
+
+function dosenOptionLabel(d: DosenOption): string {
+  const kode = d.kodeDosen ? ` (${d.kodeDosen})` : "";
+  const kk = d.kelompokKeahlianNama ?? "Tanpa KK";
+  return `${d.name}${kode} — ${kk} — P:${d.bebanPembimbing} J:${d.bebanPenguji} Total:${d.bebanPembimbing + d.bebanPenguji}`;
+}
+
+function DosenWorkloadCard({ dosen, crossKK }: { dosen: DosenOption; crossKK?: boolean }) {
+  return (
+    <div className={`rounded-lg border px-3 py-2 text-xs space-y-1 ${crossKK ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-gray-50"}`}>
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-gray-900">{dosen.name}</span>
+        {dosen.kodeDosen && <span className="font-mono text-gray-500">{dosen.kodeDosen}</span>}
+      </div>
+      <p className="text-gray-500">KK: {dosen.kelompokKeahlianNama ?? "—"}</p>
+      <div className="flex gap-3 text-gray-600">
+        <span>Beban Pembimbing: <strong>{dosen.bebanPembimbing}</strong></span>
+        <span>Beban Penguji: <strong>{dosen.bebanPenguji}</strong></span>
+        <span>Total: <strong>{dosen.bebanPembimbing + dosen.bebanPenguji}</strong></span>
+      </div>
+      {crossKK && (
+        <p className="text-amber-700 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Penguji lintas KK</p>
+      )}
+    </div>
+  );
+}
 
 type SidangRecordSerialized = {
   id: string;
@@ -340,17 +383,182 @@ function ImportTab() {
   );
 }
 
+// ─── Ubah Penguji Dialog (Monitoring tab) ────────────────────────────────────
+
+function CrossKKConfirmDialog({
+  dosen,
+  onCancel,
+  onConfirm,
+}: {
+  dosen: DosenOption;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onCancel(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-amber-700">
+            <AlertTriangle className="h-5 w-5" /> Peringatan
+          </DialogTitle>
+          <DialogDescription>
+            Apakah Anda yakin ingin memploting penguji <strong>{dosen.name}</strong> dari KK{" "}
+            <strong>{dosen.kelompokKeahlianNama ?? "—"}</strong>?
+            <br /><br />
+            Penguji lintas KK akan menambah beban dosen pada KK tersebut.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>Batal</Button>
+          <Button className="bg-[#C8102E] hover:bg-[#a50d26]" onClick={onConfirm}>Lanjutkan</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UbahPengujiDialog({
+  record,
+  dosenList,
+  onClose,
+}: {
+  record: SidangRecordSerialized;
+  dosenList: DosenOption[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [p1, setP1] = useState(record.penguji1?.id ?? "");
+  const [p2, setP2] = useState(record.penguji2?.id ?? "");
+  const [loading, setLoading] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{ slot: "p1" | "p2"; dosen: DosenOption } | null>(null);
+
+  const dosenById = new Map(dosenList.map((d) => [d.id, d]));
+  const dosen1 = dosenById.get(p1);
+  const dosen2 = dosenById.get(p2);
+  const pembimbingIds = new Set([record.pembimbing1?.id, record.pembimbing2?.id].filter(Boolean));
+
+  const handleSelect = (slot: "p1" | "p2", id: string) => {
+    const dosen = dosenById.get(id);
+    if (dosen && dosen.kelompokKeahlianId !== record.kelompokKeahlian.id) {
+      setConfirmTarget({ slot, dosen });
+    } else if (slot === "p1") {
+      setP1(id);
+    } else {
+      setP2(id);
+    }
+  };
+
+  const confirmCrossKK = () => {
+    if (!confirmTarget) return;
+    if (confirmTarget.slot === "p1") setP1(confirmTarget.dosen.id);
+    else setP2(confirmTarget.dosen.id);
+    setConfirmTarget(null);
+  };
+
+  const handleSave = async () => {
+    if (!p1) { toast.error("Penguji 1 wajib dipilih"); return; }
+    if (p2 && p1 === p2) { toast.error("Penguji 1 dan Penguji 2 tidak boleh sama"); return; }
+    setLoading(true);
+    try {
+      const res = await assignPengujiSidang(record.id, p1, p2 || null);
+      if (!res.success) {
+        toast.error(res.error);
+      } else {
+        if (res.warning) toast.warning(res.warning);
+        else toast.success(`Penguji ${record.nama} berhasil diperbarui`);
+        onClose();
+        router.refresh();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ubah Penguji</DialogTitle>
+            <DialogDescription>
+              {record.nama} ({record.nim}) — {record.prodi} — KK: {record.kelompokKeahlian.nama}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-1">Penguji 1 *</p>
+              <Select value={p1} onValueChange={(v) => { if (v) handleSelect("p1", v); }}>
+                <SelectTrigger className="text-sm"><SelectValue placeholder="Pilih Penguji 1" /></SelectTrigger>
+                <SelectContent>
+                  {dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenOptionLabel(d)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {dosen1 && (
+                <div className="mt-2">
+                  <DosenWorkloadCard dosen={dosen1} crossKK={dosen1.kelompokKeahlianId !== record.kelompokKeahlian.id} />
+                  {pembimbingIds.has(dosen1.id) && (
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Dosen ini juga pembimbing mahasiswa ini</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-1">Penguji 2</p>
+              <Select value={p2 || "none"} onValueChange={(v) => { if (v) { if (v === "none") setP2(""); else handleSelect("p2", v); } }}>
+                <SelectTrigger className="text-sm"><SelectValue placeholder="Pilih Penguji 2 (opsional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">– Tidak ada –</SelectItem>
+                  {dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenOptionLabel(d)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {dosen2 && (
+                <div className="mt-2">
+                  <DosenWorkloadCard dosen={dosen2} crossKK={dosen2.kelompokKeahlianId !== record.kelompokKeahlian.id} />
+                  {pembimbingIds.has(dosen2.id) && (
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Dosen ini juga pembimbing mahasiswa ini</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={loading}>Batal</Button>
+            <Button className="bg-[#C8102E] hover:bg-[#a50d26]" onClick={handleSave} disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {confirmTarget && (
+        <CrossKKConfirmDialog
+          dosen={confirmTarget.dosen}
+          onCancel={() => setConfirmTarget(null)}
+          onConfirm={confirmCrossKK}
+        />
+      )}
+    </>
+  );
+}
+
 // ─── Monitoring Tab ───────────────────────────────────────────────────────────
 
 function MonitoringTab({
   records,
   dosenList,
   kkList,
+  currentUserKKId,
 }: {
   records: SidangRecordSerialized[];
   dosenList: DosenOption[];
   kkList: KKOption[];
+  currentUserKKId: string | null;
 }) {
+  const [editRecord, setEditRecord] = useState<SidangRecordSerialized | null>(null);
   const [filterProdi, setFilterProdi] = useState("ALL");
   const [filterKK, setFilterKK] = useState("ALL");
   const [filterSemester, setFilterSemester] = useState("ALL");
@@ -482,11 +690,13 @@ function MonitoringTab({
                     <th className="text-left px-4 py-3 font-medium">Penguji 1</th>
                     <th className="text-left px-4 py-3 font-medium">Penguji 2</th>
                     <th className="text-left px-4 py-3 font-medium">Status</th>
+                    <th className="text-left px-4 py-3 font-medium">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((r) => {
                     const lengkap = !!(r.penguji1 && r.penguji2);
+                    const canEdit = r.kelompokKeahlian.id === currentUserKKId;
                     return (
                       <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
                         <td className="px-4 py-3 font-mono text-xs text-gray-600">{r.nim}</td>
@@ -503,6 +713,17 @@ function MonitoringTab({
                             {lengkap ? "Lengkap" : "Belum Lengkap"}
                           </Badge>
                         </td>
+                        <td className="px-4 py-3">
+                          {canEdit ? (
+                            <Button variant="ghost" size="sm" onClick={() => setEditRecord(r)} className="text-xs">
+                              <Pencil className="mr-1 h-3 w-3" /> Ubah Penguji
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-gray-400 flex items-center gap-1" title="Hanya Ketua KK pemilik mahasiswa ini yang dapat mengubah penguji">
+                              <Eye className="h-3 w-3" /> Lihat saja
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -512,14 +733,32 @@ function MonitoringTab({
           </CardContent>
         </Card>
       )}
+
+      {editRecord && (
+        <UbahPengujiDialog
+          record={editRecord}
+          dosenList={dosenList}
+          onClose={() => setEditRecord(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Belum Penguji Tab ────────────────────────────────────────────────────────
 
-function BelumPengujiTab({ records, dosenList }: { records: SidangRecordSerialized[]; dosenList: DosenOption[] }) {
-  const pending = records.filter((r) => !r.penguji1 || !r.penguji2);
+function BelumPengujiTab({
+  records,
+  dosenList,
+  currentUserKKId,
+}: {
+  records: SidangRecordSerialized[];
+  dosenList: DosenOption[];
+  currentUserKKId: string | null;
+}) {
+  const ownPending = records.filter((r) => (!r.penguji1 || !r.penguji2) && r.kelompokKeahlian.id === currentUserKKId);
+  const otherPendingCount = records.filter((r) => (!r.penguji1 || !r.penguji2) && r.kelompokKeahlian.id !== currentUserKKId).length;
+  const pending = ownPending;
   const [loading, setLoading] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [selections, setSelections] = useState<Record<string, { p1: string; p2: string }>>({});
@@ -574,18 +813,22 @@ function BelumPengujiTab({ records, dosenList }: { records: SidangRecordSerializ
     return (
       <div className="py-12 text-center">
         <CheckCircle2 className="mx-auto h-10 w-10 text-green-500 mb-3" />
-        <p className="text-sm font-medium text-gray-700">Semua mahasiswa sudah memiliki penguji lengkap.</p>
+        <p className="text-sm font-medium text-gray-700">Semua mahasiswa di KK Anda sudah memiliki penguji lengkap.</p>
+        {otherPendingCount > 0 && (
+          <p className="text-xs text-gray-400 mt-1">
+            {otherPendingCount} mahasiswa di KK lain masih belum memiliki penguji lengkap (lihat tab Monitoring Mahasiswa).
+          </p>
+        )}
       </div>
     );
   }
 
-  const dosenLabel = (d: DosenOption) => `${d.name}${d.kodeDosen ? ` (${d.kodeDosen})` : ""}`;
   const pembimbingIds = (r: SidangRecordSerialized) => new Set([r.pembimbing1?.id, r.pembimbing2?.id].filter(Boolean));
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{pending.length} mahasiswa belum memiliki penguji lengkap.</p>
+        <p className="text-sm text-gray-500">{pending.length} mahasiswa di KK Anda belum memiliki penguji lengkap.</p>
         <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
           <input type="checkbox" checked={checked.size === pending.length && pending.length > 0} onChange={toggleAll} className="rounded" />
           Pilih semua
@@ -600,13 +843,13 @@ function BelumPengujiTab({ records, dosenList }: { records: SidangRecordSerializ
             <div className="grid grid-cols-2 gap-3">
               <Select value={bulkP1} onValueChange={(v) => { if (v !== null) setBulkP1(v); }}>
                 <SelectTrigger className="h-8 text-sm bg-white"><SelectValue placeholder="Penguji 1 (wajib) *" /></SelectTrigger>
-                <SelectContent>{dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenLabel(d)}</SelectItem>)}</SelectContent>
+                <SelectContent>{dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenOptionLabel(d)}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={bulkP2 || "none"} onValueChange={(v) => { if (v !== null) setBulkP2(v === "none" ? "" : v); }}>
                 <SelectTrigger className="h-8 text-sm bg-white"><SelectValue placeholder="Penguji 2 (opsional)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">– Tidak ada –</SelectItem>
-                  {dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenLabel(d)}</SelectItem>)}
+                  {dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenOptionLabel(d)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -651,7 +894,7 @@ function BelumPengujiTab({ records, dosenList }: { records: SidangRecordSerializ
                 <div>
                   <Select value={sel1} onValueChange={(v) => { if (v !== null && v) setSel(record.id, "p1", v); }}>
                     <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Pilih Penguji 1 *" /></SelectTrigger>
-                    <SelectContent>{dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenLabel(d)}</SelectItem>)}</SelectContent>
+                    <SelectContent>{dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenOptionLabel(d)}</SelectItem>)}</SelectContent>
                   </Select>
                   {warn1 && <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Juga pembimbing</p>}
                 </div>
@@ -660,7 +903,7 @@ function BelumPengujiTab({ records, dosenList }: { records: SidangRecordSerializ
                     <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Pilih Penguji 2" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">– Tidak ada –</SelectItem>
-                      {dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenLabel(d)}</SelectItem>)}
+                      {dosenList.map((d) => <SelectItem key={d.id} value={d.id}>{dosenOptionLabel(d)}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   {warn2 && <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Juga pembimbing</p>}
@@ -687,18 +930,20 @@ export function PlottingPengujiClient({
   records,
   dosenList,
   kkList,
+  currentUserKKId,
 }: {
   records: SidangRecordSerialized[];
   dosenList: DosenOption[];
   kkList: KKOption[];
+  currentUserKKId: string | null;
 }) {
   const [tab, setTab] = useState<Tab>("import");
-  const pendingCount = records.filter((r) => !r.penguji1 || !r.penguji2).length;
+  const ownPendingCount = records.filter((r) => (!r.penguji1 || !r.penguji2) && r.kelompokKeahlian.id === currentUserKKId).length;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "import", label: "Import" },
     { key: "monitoring", label: `Monitoring Mahasiswa (${records.length})` },
-    { key: "belum", label: `Belum Memiliki Penguji (${pendingCount})` },
+    { key: "belum", label: `Belum Memiliki Penguji (${ownPendingCount})` },
   ];
 
   return (
@@ -715,8 +960,8 @@ export function PlottingPengujiClient({
       </div>
 
       {tab === "import" && <ImportTab />}
-      {tab === "monitoring" && <MonitoringTab records={records} dosenList={dosenList} kkList={kkList} />}
-      {tab === "belum" && <BelumPengujiTab records={records} dosenList={dosenList} />}
+      {tab === "monitoring" && <MonitoringTab records={records} dosenList={dosenList} kkList={kkList} currentUserKKId={currentUserKKId} />}
+      {tab === "belum" && <BelumPengujiTab records={records} dosenList={dosenList} currentUserKKId={currentUserKKId} />}
     </div>
   );
 }

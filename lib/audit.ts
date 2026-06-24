@@ -17,7 +17,8 @@ export type AuditAction =
   | "SIDANG_IMPORT_BULK"
   | "ASSIGN_PENGUJI_SIDANG"
   | "REASSIGN_PENGUJI_SIDANG"
-  | "ASSIGNMENT_UPDATED";
+  | "ASSIGNMENT_UPDATED"
+  | "CROSS_KK_EXAMINER_ASSIGNMENT";
 
 export type AssignmentChange = { field: string; previous: string; new: string };
 

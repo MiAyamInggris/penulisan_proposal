@@ -65,6 +65,9 @@ enum NotificationType {
   EPRT_VERIFIED
   DE_SCORED
   ASSIGNMENT_MADE
+  PENGUJI_CROSS_KK_NEW
+  PENGUJI_CROSS_KK_REMOVED
+  PENGUJI_CROSS_KK_CHANGED
 }
 
 // ─── Core Models ─────────────────────────────────────────────────────────────
