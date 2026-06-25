@@ -461,10 +461,11 @@ model SidangImportWarning {
   warningType     SidangWarningType
   warningMessages Json
 
-  status       SidangWarningStatus @default(PENDING)
-  resolvedAt   DateTime?
-  resolvedById String?
-  resolvedBy   User?               @relation("WarningResolvedBy", fields: [resolvedById], references: [id])
+  status         SidangWarningStatus @default(PENDING)
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolvedBy     User?               @relation("WarningResolvedBy", fields: [resolvedById], references: [id])
+  resolutionNote String?
 
   importedById String
   importedBy   User   @relation("WarningImportedBy", fields: [importedById], references: [id])

@@ -31,6 +31,7 @@ export default async function AdminPlottingPengujiWarningsPage() {
 
   const rows: SidangWarningRow[] = warnings.map((w) => ({
     id: w.id,
+    importBatchId: w.importBatchId,
     nim: w.nim,
     nama: w.nama,
     prodi: w.prodi,

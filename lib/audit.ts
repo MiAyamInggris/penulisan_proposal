@@ -20,7 +20,9 @@ export type AuditAction =
   | "ASSIGNMENT_UPDATED"
   | "CROSS_KK_EXAMINER_ASSIGNMENT"
   | "FORCE_INSERT_PENGUJI"
-  | "IGNORE_SIDANG_WARNING";
+  | "IGNORE_SIDANG_WARNING"
+  | "BULK_ACCEPT_SIDANG_WARNING"
+  | "BULK_IGNORE_SIDANG_WARNING";
 
 export type AssignmentChange = { field: string; previous: string; new: string };
 

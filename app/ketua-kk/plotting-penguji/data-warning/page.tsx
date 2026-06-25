@@ -8,6 +8,7 @@ export type DosenRef = { id: string; name: string; kodeDosen: string | null } | 
 
 export type SidangWarningRow = {
   id: string;
+  importBatchId: string;
   nim: string;
   nama: string;
   prodi: string;
@@ -76,6 +77,7 @@ export default async function DataWarningPage() {
 
   const rows: SidangWarningRow[] = warnings.map((w) => ({
     id: w.id,
+    importBatchId: w.importBatchId,
     nim: w.nim,
     nama: w.nama,
     prodi: w.prodi,

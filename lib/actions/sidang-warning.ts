@@ -6,16 +6,28 @@ import { logAudit, type AssignmentChange } from "@/lib/audit";
 import { createNotification } from "@/lib/actions/notifications";
 import { assignPengujiSidang, type AssignPengujiResult } from "@/lib/actions/sidang-assign";
 import { revalidatePath } from "next/cache";
-import type { ProdiCode } from "@prisma/client";
+import type { ProdiCode, SidangImportWarning } from "@prisma/client";
 
-async function loadPendingWarning(warningId: string, isAdmin: boolean, myKKId: string | null) {
+type SidangCtx = Awaited<ReturnType<typeof requireKetuaOrAdminForSidang>>;
+
+type LoadResult =
+  | { ok: true; warning: SidangImportWarning }
+  | { ok: false; reason: string; rejected: boolean };
+
+async function loadPendingWarningSafe(warningId: string, isAdmin: boolean, myKKId: string | null): Promise<LoadResult> {
   const warning = await prisma.sidangImportWarning.findUnique({ where: { id: warningId } });
-  if (!warning) throw new Error("Data warning tidak ditemukan");
-  if (warning.status !== "PENDING") throw new Error("Data warning ini sudah diselesaikan sebelumnya");
+  if (!warning) return { ok: false, reason: "Data warning tidak ditemukan", rejected: false };
+  if (warning.status !== "PENDING") return { ok: false, reason: "Data warning ini sudah diselesaikan sebelumnya", rejected: false };
   if (!isAdmin && warning.kelompokKeahlianId !== myKKId) {
-    throw new Error("Anda hanya dapat menyelesaikan warning untuk mahasiswa di Kelompok Keahlian Anda sendiri");
+    return { ok: false, reason: "Mahasiswa belongs to another KK (Mahasiswa berasal dari KK lain)", rejected: true };
   }
-  return warning;
+  return { ok: true, warning };
+}
+
+async function loadPendingWarning(warningId: string, isAdmin: boolean, myKKId: string | null): Promise<SidangImportWarning> {
+  const res = await loadPendingWarningSafe(warningId, isAdmin, myKKId);
+  if (!res.ok) throw new Error(res.reason);
+  return res.warning;
 }
 
 function revalidateWarningPaths() {
@@ -47,7 +59,7 @@ async function ensureSidangRecord(warning: { existingSidangRecordId: string | nu
   return created.id;
 }
 
-// ─── Change Penguji ──────────────────────────────────────────────────────────
+// ─── Change Penguji (single record — opens normal assignment workflow) ───────
 
 export async function resolveWarningChangePenguji(
   warningId: string,
@@ -76,16 +88,19 @@ export async function resolveWarningChangePenguji(
   return assignResult;
 }
 
-// ─── Force Insert ────────────────────────────────────────────────────────────
+// ─── Force Insert / Accept Changes (core, reused by single + bulk) ──────────
 
-export type ForceInsertResult = { success: true } | { success: false; error: string };
+type ApplyForceInsertResult =
+  | { success: true; nim: string }
+  | { success: false; nim?: string; error: string; rejected?: boolean };
 
-export async function forceInsertWarning(warningId: string): Promise<ForceInsertResult> {
-  const { session, auditRole, isAdmin, myKKId } = await requireKetuaOrAdminForSidang();
+async function applyForceInsert(
+  warning: SidangImportWarning,
+  ctx: SidangCtx
+): Promise<ApplyForceInsertResult> {
+  const { session, auditRole } = ctx;
 
   try {
-    const warning = await loadPendingWarning(warningId, isAdmin, myKKId);
-
     const [kk, newPenguji1, newPenguji2, existing] = await Promise.all([
       prisma.kelompokKeahlian.findUnique({ where: { id: warning.kelompokKeahlianId }, select: { nama: true } }),
       warning.importedPenguji1Id
@@ -189,30 +204,39 @@ export async function forceInsertWarning(warningId: string): Promise<ForceInsert
     await notifyIfCross(existing?.penguji2, newPenguji2, "Penguji 2");
 
     await prisma.sidangImportWarning.update({
-      where: { id: warningId },
+      where: { id: warning.id },
       data: { status: "RESOLVED_FORCED", resolvedAt: new Date(), resolvedById: session.user.id, existingSidangRecordId: sidangRecordId },
     });
 
-    revalidateWarningPaths();
-    return { success: true };
+    return { success: true, nim: warning.nim };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : "Gagal memproses Force Insert" };
+    return { success: false, nim: warning.nim, error: err instanceof Error ? err.message : "Gagal memproses Force Insert" };
   }
 }
 
-// ─── Ignore ──────────────────────────────────────────────────────────────────
+export type ForceInsertResult = { success: true } | { success: false; error: string };
 
-export type IgnoreResult = { success: true } | { success: false; error: string };
+export async function forceInsertWarning(warningId: string): Promise<ForceInsertResult> {
+  const ctx = await requireKetuaOrAdminForSidang();
+  const warning = await loadPendingWarningSafe(warningId, ctx.isAdmin, ctx.myKKId);
+  if (!warning.ok) return { success: false, error: warning.reason };
 
-export async function ignoreWarning(warningId: string): Promise<IgnoreResult> {
-  const { session, auditRole, isAdmin, myKKId } = await requireKetuaOrAdminForSidang();
+  const result = await applyForceInsert(warning.warning, ctx);
+  revalidateWarningPaths();
+  if (!result.success) return { success: false, error: result.error };
+  return { success: true };
+}
 
+// ─── Ignore (core, reused by single + bulk) ──────────────────────────────────
+
+type ApplyIgnoreResult = { success: true; nim: string } | { success: false; nim?: string; error: string };
+
+async function applyIgnore(warning: SidangImportWarning, ctx: SidangCtx, note?: string): Promise<ApplyIgnoreResult> {
+  const { session, auditRole } = ctx;
   try {
-    const warning = await loadPendingWarning(warningId, isAdmin, myKKId);
-
     await prisma.sidangImportWarning.update({
-      where: { id: warningId },
-      data: { status: "IGNORED", resolvedAt: new Date(), resolvedById: session.user.id },
+      where: { id: warning.id },
+      data: { status: "IGNORED", resolvedAt: new Date(), resolvedById: session.user.id, resolutionNote: note || null },
     });
 
     await logAudit(
@@ -223,15 +247,127 @@ export async function ignoreWarning(warningId: string): Promise<IgnoreResult> {
         nim: warning.nim,
         nama: warning.nama,
         warningType: warning.warningType,
-        message: `Warning untuk ${warning.nim} (${warning.nama}) diabaikan tanpa perubahan data.`,
+        note: note || undefined,
+        message: `Warning untuk ${warning.nim} (${warning.nama}) diabaikan tanpa perubahan data.${note ? ` Alasan: ${note}` : ""}`,
       },
       "SIDANG_IMPORT_WARNING",
-      warningId
+      warning.id
     );
 
-    revalidateWarningPaths();
-    return { success: true };
+    return { success: true, nim: warning.nim };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : "Gagal memproses" };
+    return { success: false, nim: warning.nim, error: err instanceof Error ? err.message : "Gagal memproses" };
   }
+}
+
+export type IgnoreResult = { success: true } | { success: false; error: string };
+
+export async function ignoreWarning(warningId: string, note?: string): Promise<IgnoreResult> {
+  const ctx = await requireKetuaOrAdminForSidang();
+  const warning = await loadPendingWarningSafe(warningId, ctx.isAdmin, ctx.myKKId);
+  if (!warning.ok) return { success: false, error: warning.reason };
+
+  const result = await applyIgnore(warning.warning, ctx, note);
+  revalidateWarningPaths();
+  if (!result.success) return { success: false, error: result.error };
+  return { success: true };
+}
+
+// ─── Bulk actions ─────────────────────────────────────────────────────────────
+
+export type BulkWarningResult = {
+  total: number;
+  success: number;
+  rejected: number;
+  failed: number;
+  rows: { id: string; nim: string; status: "Success" | "Rejected" | "Failed"; reason?: string }[];
+};
+
+export async function bulkAcceptWarnings(warningIds: string[]): Promise<BulkWarningResult> {
+  const ctx = await requireKetuaOrAdminForSidang();
+  const { session, auditRole, isAdmin, myKKId } = ctx;
+
+  const result: BulkWarningResult = { total: warningIds.length, success: 0, rejected: 0, failed: 0, rows: [] };
+
+  for (const id of warningIds) {
+    const loaded = await loadPendingWarningSafe(id, isAdmin, myKKId);
+    if (!loaded.ok) {
+      if (loaded.rejected) result.rejected++;
+      else result.failed++;
+      result.rows.push({ id, nim: "?", status: loaded.rejected ? "Rejected" : "Failed", reason: loaded.reason });
+      continue;
+    }
+
+    const applied = await applyForceInsert(loaded.warning, ctx);
+    if (applied.success) {
+      result.success++;
+      result.rows.push({ id, nim: applied.nim, status: "Success" });
+    } else {
+      result.failed++;
+      result.rows.push({ id, nim: applied.nim ?? "?", status: "Failed", reason: applied.error });
+    }
+  }
+
+  await logAudit(
+    session.user.id,
+    auditRole,
+    "BULK_ACCEPT_SIDANG_WARNING",
+    {
+      batchAction: "Accept Changes",
+      totalRecords: result.total,
+      accepted: result.success,
+      rejected: result.rejected,
+      failed: result.failed,
+      message: `Bulk Accept Changes: ${result.success} diterima, ${result.rejected} ditolak (KK lain), ${result.failed} gagal dari total ${result.total} data.`,
+    },
+    "SIDANG_IMPORT_WARNING"
+  );
+
+  revalidateWarningPaths();
+  return result;
+}
+
+export async function bulkIgnoreWarnings(warningIds: string[], note?: string): Promise<BulkWarningResult> {
+  const ctx = await requireKetuaOrAdminForSidang();
+  const { session, auditRole, isAdmin, myKKId } = ctx;
+
+  const result: BulkWarningResult = { total: warningIds.length, success: 0, rejected: 0, failed: 0, rows: [] };
+
+  for (const id of warningIds) {
+    const loaded = await loadPendingWarningSafe(id, isAdmin, myKKId);
+    if (!loaded.ok) {
+      if (loaded.rejected) result.rejected++;
+      else result.failed++;
+      result.rows.push({ id, nim: "?", status: loaded.rejected ? "Rejected" : "Failed", reason: loaded.reason });
+      continue;
+    }
+
+    const applied = await applyIgnore(loaded.warning, ctx, note);
+    if (applied.success) {
+      result.success++;
+      result.rows.push({ id, nim: applied.nim, status: "Success" });
+    } else {
+      result.failed++;
+      result.rows.push({ id, nim: applied.nim ?? "?", status: "Failed", reason: applied.error });
+    }
+  }
+
+  await logAudit(
+    session.user.id,
+    auditRole,
+    "BULK_IGNORE_SIDANG_WARNING",
+    {
+      batchAction: "Ignore",
+      totalRecords: result.total,
+      ignored: result.success,
+      rejected: result.rejected,
+      failed: result.failed,
+      note: note || undefined,
+      message: `Bulk Ignore: ${result.success} diabaikan, ${result.rejected} ditolak (KK lain), ${result.failed} gagal dari total ${result.total} data.`,
+    },
+    "SIDANG_IMPORT_WARNING"
+  );
+
+  revalidateWarningPaths();
+  return result;
 }
